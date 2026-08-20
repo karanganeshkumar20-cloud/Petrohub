@@ -2,27 +2,30 @@
 
 import { useEffect } from "react";
 
-export default function ArticleViewTracker({
-  articleId,
+export default function BookViewTracker({
+  bookId,
 }: {
-  articleId: string;
+  bookId: string;
 }) {
   useEffect(() => {
     async function increaseView() {
       try {
-        await fetch(`/api/articles/${articleId}/view`, {
-          method: "POST",
-        });
+        await fetch(
+          `/api/books/${bookId}/view`,
+          {
+            method: "POST",
+          }
+        );
       } catch (error) {
         console.error(
-          "Unable to update article views:",
+          "Unable to update book views:",
           error
         );
       }
     }
 
     increaseView();
-  }, [articleId]);
+  }, [bookId]);
 
   return null;
 }

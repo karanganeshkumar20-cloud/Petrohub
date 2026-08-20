@@ -1,76 +1,136 @@
 import type { MetadataRoute } from "next";
-import { articles } from "@/data/articles";
 
+import { connectDB } from "@/lib/mongodb";
+import { BookModel } from "@/models/Book";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const dynamic = "force-dynamic";
 
-  const articleUrls = articles.map((article) => ({
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    "http://localhost:3000";
 
-    url: `https://petrohub.com/articles/${article.slug}`,
+  /*
+   * STATIC PAGES
+   */
 
-    lastModified: new Date(),
-
-  }));
-
-
-  return [
-
+  const staticPages: MetadataRoute.Sitemap = [
     {
-      url: "https://petrohub.com",
+      url: siteUrl,
       lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 1,
     },
 
-
     {
-      url: "https://petrohub.com/articles",
+      url: `${siteUrl}/articles`,
       lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.9,
     },
 
-
     {
-      url: "https://petrohub.com/categories/oil-gas",
+      url: `${siteUrl}/library`,
       lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.9,
     },
 
-
     {
-      url: "https://petrohub.com/categories/hse",
+      url: `${siteUrl}/categories`,
       lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
     },
 
-
     {
-      url: "https://petrohub.com/categories/mechanical",
+      url: `${siteUrl}/about`,
       lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.6,
     },
 
-
     {
-      url: "https://petrohub.com/categories/electrical",
+      url: `${siteUrl}/contact`,
       lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.5,
     },
-
-
-    {
-      url: "https://petrohub.com/categories/instrumentation",
-      lastModified: new Date(),
-    },
-
-
-    {
-      url: "https://petrohub.com/categories/process",
-      lastModified: new Date(),
-    },
-
-
-    {
-      url: "https://petrohub.com/categories/geology",
-      lastModified: new Date(),
-    },
-
-
-    ...articleUrls,
-
   ];
 
+  /*
+   * CATEGORY PAGES
+   */
+
+  const categories = [
+    "hse",
+    "oil-gas",
+    "mechanical",
+    "civil",
+    "electrical",
+    "instrumentation",
+    "process",
+    "geology",
+  ];
+
+  const categoryPages: MetadataRoute.Sitemap =
+    categories.map((category) => ({
+      url: `${siteUrl}/categories/${category}`,
+
+      lastModified: new Date(),
+
+      changeFrequency:
+        "weekly" as const,
+
+      priority: 0.7,
+    }));
+
+  /*
+   * LIBRARY RESOURCES FROM MONGODB
+   */
+
+  let libraryPages: MetadataRoute.Sitemap = [];
+
+  try {
+    await connectDB();
+
+    const books = await BookModel.find({
+      status: "Published",
+    })
+      .select(
+        "slug updatedAt createdAt"
+      )
+      .lean();
+
+    libraryPages = books.map(
+      (book: any) => ({
+        url: `${siteUrl}/library/${book.slug}`,
+
+        lastModified:
+          book.updatedAt ||
+          book.createdAt ||
+          new Date(),
+
+        changeFrequency:
+          "monthly" as const,
+
+        priority: 0.8,
+      })
+    );
+  } catch (error) {
+    console.error(
+      "Unable to generate library sitemap:",
+      error
+    );
+  }
+
+  /*
+   * FINAL SITEMAP
+   */
+
+  return [
+    ...staticPages,
+    ...categoryPages,
+    ...libraryPages,
+  ];
 }

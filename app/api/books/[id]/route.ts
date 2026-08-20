@@ -3,8 +3,7 @@ import mongoose from "mongoose";
 
 import { connectDB } from "@/lib/mongodb";
 import { requireAdmin } from "@/lib/admin";
-
-import Article from "@/models/Article";
+import { BookModel } from "@/models/Book";
 
 type RouteContext = {
   params: Promise<{
@@ -12,7 +11,7 @@ type RouteContext = {
   }>;
 };
 
-function createSlug(title: string): string {
+function createSlug(title: string) {
   return title
     .toLowerCase()
     .trim()
@@ -23,11 +22,37 @@ function createSlug(title: string): string {
     .replace(/^-|-$/g, "");
 }
 
+function normalizeContentType(value: string) {
+  const allowed = [
+    "book",
+    "manual",
+    "standard",
+    "note",
+    "download",
+  ];
+
+  return allowed.includes(value) ? value : "book";
+}
+
 export async function GET(
   request: NextRequest,
   context: RouteContext
 ) {
   try {
+    const admin = await requireAdmin();
+
+    if (!admin.authorized) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: admin.message,
+        },
+        {
+          status: admin.status,
+        }
+      );
+    }
+
     await connectDB();
 
     const { id } = await context.params;
@@ -36,7 +61,7 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid article ID",
+          message: "Invalid resource ID",
         },
         {
           status: 400,
@@ -44,13 +69,13 @@ export async function GET(
       );
     }
 
-    const article = await Article.findById(id).lean();
+    const book = await BookModel.findById(id).lean();
 
-    if (!article) {
+    if (!book) {
       return NextResponse.json(
         {
           success: false,
-          message: "Article not found",
+          message: "Resource not found",
         },
         {
           status: 404,
@@ -60,15 +85,15 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      article,
+      book,
     });
   } catch (error) {
-    console.error("Get article error:", error);
+    console.error("Get resource error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        message: "Unable to fetch article",
+        message: "Unable to fetch resource",
       },
       {
         status: 500,
@@ -104,7 +129,7 @@ export async function PUT(
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid article ID",
+          message: "Invalid resource ID",
         },
         {
           status: 400,
@@ -114,7 +139,33 @@ export async function PUT(
 
     const body = await request.json();
 
-    if (!body.title?.trim()) {
+    const {
+      title,
+      author,
+      description,
+      category,
+      contentType,
+      coverImage,
+
+      resourceType,
+      fileUrl,
+      filePublicId,
+      externalUrl,
+
+      pages,
+      edition,
+      publisher,
+      year,
+
+      license,
+      source,
+      sourceUrl,
+
+      status,
+      featured,
+    } = body;
+
+    if (!title?.trim()) {
       return NextResponse.json(
         {
           success: false,
@@ -126,7 +177,7 @@ export async function PUT(
       );
     }
 
-    if (!body.category?.trim()) {
+    if (!category?.trim()) {
       return NextResponse.json(
         {
           success: false,
@@ -138,11 +189,20 @@ export async function PUT(
       );
     }
 
-    if (!body.content?.trim()) {
+    const finalResourceType =
+      resourceType === "external"
+        ? "external"
+        : "hosted";
+
+    if (
+      finalResourceType === "hosted" &&
+      !fileUrl
+    ) {
       return NextResponse.json(
         {
           success: false,
-          message: "Content is required",
+          message:
+            "PDF file is required for hosted resources",
         },
         {
           status: 400,
@@ -150,22 +210,38 @@ export async function PUT(
       );
     }
 
-    const newSlug = createSlug(body.title);
+    if (
+      finalResourceType === "external" &&
+      !externalUrl?.trim()
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Official resource URL is required",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
-    const duplicateArticle =
-      await Article.findOne({
-        slug: newSlug,
+    const slug = createSlug(title);
+
+    const duplicateBook =
+      await BookModel.findOne({
+        slug,
         _id: {
           $ne: id,
         },
       });
 
-    if (duplicateArticle) {
+    if (duplicateBook) {
       return NextResponse.json(
         {
           success: false,
           message:
-            "Another article already uses this title",
+            "Another resource already uses this title",
         },
         {
           status: 409,
@@ -173,52 +249,80 @@ export async function PUT(
       );
     }
 
-    const article =
-      await Article.findByIdAndUpdate(
+    const updatedBook =
+      await BookModel.findByIdAndUpdate(
         id,
         {
-          title: body.title.trim(),
-          slug: newSlug,
+          title: title.trim(),
+          slug,
 
-          summary:
-            body.summary?.trim() || "",
+          author:
+            author?.trim() || "",
 
-          content: body.content,
+          description:
+            description?.trim() || "",
 
-          category: body.category.trim(),
+          category:
+            category.trim(),
 
-          tags: Array.isArray(body.tags)
-            ? body.tags
-                .map((tag: string) =>
-                  tag.trim()
-                )
-                .filter(Boolean)
-            : [],
+          contentType:
+            normalizeContentType(
+              contentType
+            ),
 
-          featuredImage:
-            body.featuredImage || "",
+          coverImage:
+            coverImage || "",
+
+          resourceType:
+            finalResourceType,
+
+          fileUrl:
+            finalResourceType === "hosted"
+              ? fileUrl || ""
+              : "",
+
+          filePublicId:
+            finalResourceType === "hosted"
+              ? filePublicId || ""
+              : "",
+
+          externalUrl:
+            finalResourceType === "external"
+              ? externalUrl.trim()
+              : "",
+
+          pages:
+            Number(pages) || 0,
+
+          edition:
+            edition?.trim() || "",
+
+          publisher:
+            publisher?.trim() || "",
+
+          year:
+            year &&
+            !Number.isNaN(Number(year))
+              ? Number(year)
+              : undefined,
+
+          license:
+            license?.trim() || "",
 
           source:
-            body.source?.trim() ||
+            source?.trim() ||
             "PetroHub",
 
           sourceUrl:
-            body.sourceUrl?.trim() || "",
-
-          license:
-            body.license?.trim() || "",
-
-          author:
-            body.author?.trim() ||
-            "PetroHub Team",
+            sourceUrl?.trim() || "",
 
           status:
-            body.status === "Draft"
+            status === "Draft"
               ? "Draft"
               : "Published",
 
           featured:
-            Boolean(body.featured),
+            Boolean(featured),
         },
         {
           new: true,
@@ -226,11 +330,11 @@ export async function PUT(
         }
       );
 
-    if (!article) {
+    if (!updatedBook) {
       return NextResponse.json(
         {
           success: false,
-          message: "Article not found",
+          message: "Resource not found",
         },
         {
           status: 404,
@@ -240,16 +344,21 @@ export async function PUT(
 
     return NextResponse.json({
       success: true,
-      message: "Article updated successfully",
-      article,
+      message:
+        "Library resource updated successfully",
+      book: updatedBook,
     });
   } catch (error) {
-    console.error("Update article error:", error);
+    console.error(
+      "Update resource error:",
+      error
+    );
 
     return NextResponse.json(
       {
         success: false,
-        message: "Unable to update article",
+        message:
+          "Unable to update library resource",
       },
       {
         status: 500,
@@ -285,7 +394,7 @@ export async function DELETE(
       return NextResponse.json(
         {
           success: false,
-          message: "Invalid article ID",
+          message: "Invalid resource ID",
         },
         {
           status: 400,
@@ -293,14 +402,14 @@ export async function DELETE(
       );
     }
 
-    const article =
-      await Article.findByIdAndDelete(id);
+    const book =
+      await BookModel.findByIdAndDelete(id);
 
-    if (!article) {
+    if (!book) {
       return NextResponse.json(
         {
           success: false,
-          message: "Article not found",
+          message: "Resource not found",
         },
         {
           status: 404,
@@ -310,15 +419,20 @@ export async function DELETE(
 
     return NextResponse.json({
       success: true,
-      message: "Article deleted successfully",
+      message:
+        "Library resource deleted successfully",
     });
   } catch (error) {
-    console.error("Delete article error:", error);
+    console.error(
+      "Delete resource error:",
+      error
+    );
 
     return NextResponse.json(
       {
         success: false,
-        message: "Unable to delete article",
+        message:
+          "Unable to delete library resource",
       },
       {
         status: 500,
