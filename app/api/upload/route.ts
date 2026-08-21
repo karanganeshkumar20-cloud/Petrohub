@@ -21,8 +21,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const formData =
-      await request.formData();
+    const formData = await request.formData();
 
     const file = formData.get("file");
 
@@ -57,8 +56,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const maxSize =
-      5 * 1024 * 1024;
+    const maxSize = 5 * 1024 * 1024;
 
     if (file.size > maxSize) {
       return NextResponse.json(
@@ -79,63 +77,61 @@ export async function POST(request: Request) {
     const buffer =
       Buffer.from(arrayBuffer);
 
-    const result =
-      await new Promise<{
-        secure_url: string;
-        public_id: string;
-      }>((resolve, reject) => {
-        const stream =
-          cloudinary.uploader.upload_stream(
-            {
-              folder:
-                "petrohub/articles",
+    const result = await new Promise<{
+      secure_url: string;
+      public_id: string;
+    }>((resolve, reject) => {
+      const stream =
+        cloudinary.uploader.upload_stream(
+          {
+            resource_type: "image",
+          },
+          (error, result) => {
+            if (error) {
+              console.error(
+                "Cloudinary raw upload error:",
+                error
+              );
 
-              resource_type:
-                "image",
-
-              transformation: [
-                {
-                  width: 1600,
-                  height: 900,
-                  crop: "limit",
-                  quality: "auto",
-                },
-              ],
-            },
-            (error, result) => {
-              if (error) {
-                reject(error);
-                return;
-              }
-
-              if (!result) {
-                reject(
-                  new Error(
-                    "Cloudinary returned no result"
-                  )
-                );
-                return;
-              }
-
-              resolve({
-                secure_url:
-                  result.secure_url,
-
-                public_id:
-                  result.public_id,
-              });
+              reject(error);
+              return;
             }
-          );
 
-        stream.end(buffer);
-      });
+            if (!result) {
+              reject(
+                new Error(
+                  "Cloudinary returned no upload result"
+                )
+              );
+              return;
+            }
 
-    return NextResponse.json({
-      success: true,
-      url: result.secure_url,
-      publicId: result.public_id,
+            resolve({
+              secure_url:
+                result.secure_url,
+              public_id:
+                result.public_id,
+            });
+          }
+        );
+
+      stream.end(buffer);
     });
-  } catch (error) {
+
+    return NextResponse.json(
+      {
+        success: true,
+        message:
+          "Image uploaded successfully",
+        url: result.secure_url,
+        publicId:
+          result.public_id,
+      },
+      {
+        status: 200,
+      }
+    );
+  } catch (error: any) {
     console.error(
       "Cloudinary upload error:",
       error
@@ -144,13 +140,20 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: false,
+
         message:
-          error instanceof Error
-            ? error.message
-            : "Unable to upload image",
+          error?.message ||
+          "Unable to upload image",
+
+        httpCode:
+          error?.http_code ||
+          null,
       },
       {
-        status: 500,
+        status:
+          error?.http_code === 403
+            ? 403
+            : 500,
       }
     );
   }
