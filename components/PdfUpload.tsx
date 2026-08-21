@@ -91,14 +91,6 @@ export default function PdfUpload({
         "Preparing secure upload..."
       );
 
-      /*
-       * Get signed parameters
-       * from PetroHub server.
-       *
-       * API secret never goes
-       * to the browser.
-       */
-
       const signatureResponse =
         await fetch(
           "/api/cloudinary/sign-pdf",
@@ -108,8 +100,26 @@ export default function PdfUpload({
           }
         );
 
-      const signatureData: SignatureResponse =
-        await signatureResponse.json();
+      const responseText =
+        await signatureResponse.text();
+
+      let signatureData:
+        SignatureResponse;
+
+      try {
+        signatureData =
+          responseText
+            ? JSON.parse(
+                responseText
+              )
+            : {
+                success: false,
+              };
+      } catch {
+        throw new Error(
+          `Unable to prepare PDF upload (${signatureResponse.status})`
+        );
+      }
 
       if (
         !signatureResponse.ok ||
@@ -145,16 +155,6 @@ export default function PdfUpload({
         "Uploading PDF directly to Cloudinary..."
       );
 
-      /*
-       * IMPORTANT:
-       *
-       * The PDF now goes directly
-       * from browser → Cloudinary.
-       *
-       * It DOES NOT travel through
-       * a Vercel Function.
-       */
-
       const formData =
         new FormData();
 
@@ -183,8 +183,16 @@ export default function PdfUpload({
         signature
       );
 
+      /*
+       * IMPORTANT:
+       * PDFs are uploaded as
+       * Cloudinary image assets.
+       *
+       * Cloudinary supports PDFs
+       * as image resource types.
+       */
       const cloudinaryUrl =
-        `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
+        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
 
       const uploadResponse =
         await fetch(
@@ -195,16 +203,16 @@ export default function PdfUpload({
           }
         );
 
-      const responseText =
+      const uploadText =
         await uploadResponse.text();
 
       let uploadData: any;
 
       try {
         uploadData =
-          responseText
+          uploadText
             ? JSON.parse(
-                responseText
+                uploadText
               )
             : {};
       } catch {
@@ -217,7 +225,7 @@ export default function PdfUpload({
         throw new Error(
           uploadData?.error
             ?.message ||
-            `Cloudinary upload failed (${uploadResponse.status})`
+            `Cloudinary PDF upload failed (${uploadResponse.status})`
         );
       }
 
@@ -273,8 +281,8 @@ export default function PdfUpload({
       />
 
       <p className="mt-2 text-xs text-slate-500">
-        PDF only. Maximum PetroHub
-        upload size: 25 MB.
+        PDF only. Maximum size:
+        25 MB.
       </p>
 
       {uploading && (
@@ -310,6 +318,10 @@ export default function PdfUpload({
             <p className="font-semibold text-green-400">
               PDF uploaded
               successfully ✓
+            </p>
+
+            <p className="mt-2 break-all text-xs text-slate-500">
+              {value}
             </p>
           </div>
         )}
