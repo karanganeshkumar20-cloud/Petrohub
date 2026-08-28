@@ -3,120 +3,152 @@ import { notFound } from "next/navigation";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import ArticleCard from "@/components/ArticleCard";
+import ArticleViewTracker from "@/components/ArticleViewTracker";
+import BookmarkButton from "@/components/BookmarkButton";
 
 import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
 
 export const dynamic = "force-dynamic";
 
-type CategoryPageProps = {
+type ArticlePageProps = {
   params: Promise<{
     slug: string;
   }>;
 };
 
-const categoryMap: Record<
-  string,
-  {
-    name: string;
-    description: string;
-  }
-> = {
-  hse: {
-    name: "HSE",
-    description:
-      "Explore health, safety and environment articles covering workplace safety, risk assessment, permit to work, LOTO, incident investigation and safety management.",
-  },
+/* =========================
+   GET ARTICLE
+========================= */
 
-  "oil-gas": {
-    name: "Oil & Gas",
-    description:
-      "Explore petroleum engineering, drilling, production, reservoir engineering, upstream operations and oil and gas industry knowledge.",
-  },
-
-  mechanical: {
-    name: "Mechanical",
-    description:
-      "Explore mechanical engineering topics including piping, rotating equipment, corrosion, maintenance and industrial machinery.",
-  },
-
-  electrical: {
-    name: "Electrical",
-    description:
-      "Explore industrial electrical systems, electrical safety, isolation, power systems and equipment protection.",
-  },
-
-  instrumentation: {
-    name: "Instrumentation",
-    description:
-      "Explore instrumentation, calibration, sensors, transmitters, industrial measurement and control systems.",
-  },
-
-  process: {
-    name: "Process",
-    description:
-      "Explore process engineering, process safety, HAZOP, industrial systems and operational engineering concepts.",
-  },
-
-  civil: {
-    name: "Civil",
-    description:
-      "Explore civil engineering, construction, structural systems, site practices and engineering fundamentals.",
-  },
-
-  geology: {
-    name: "Geology",
-    description:
-      "Explore petroleum geology, earth sciences, formations, reservoirs and subsurface engineering topics.",
-  },
-};
-
-async function getArticlesByCategory(
-  categoryName: string
+async function getArticleBySlug(
+  slug: string
 ) {
   await connectDB();
 
-  const articles = await Article.find({
-    category: categoryName,
-    status: "Published",
-  })
-    .sort({
-      featured: -1,
-      createdAt: -1,
-    })
-    .lean();
+  const article =
+    await Article.findOne({
+      slug,
+      status: "Published",
+    }).lean();
+
+  if (!article) {
+    return null;
+  }
 
   return JSON.parse(
-    JSON.stringify(articles)
+    JSON.stringify(article)
   );
 }
 
-export default async function CategoryPage({
+/* =========================
+   RELATED ARTICLES
+========================= */
+
+async function getRelatedArticles(
+  category: string,
+  articleId: string
+) {
+  await connectDB();
+
+  const relatedArticles =
+    await Article.find({
+      category,
+      status: "Published",
+
+      _id: {
+        $ne: articleId,
+      },
+    })
+      .sort({
+        createdAt: -1,
+      })
+      .limit(3)
+      .lean();
+
+  return JSON.parse(
+    JSON.stringify(
+      relatedArticles
+    )
+  );
+}
+
+/* =========================
+   CATEGORY SLUG
+========================= */
+
+function getCategorySlug(
+  category: string
+) {
+  const categorySlugs: Record<
+    string,
+    string
+  > = {
+    HSE: "hse",
+    "Oil & Gas": "oil-gas",
+    Mechanical: "mechanical",
+    Electrical: "electrical",
+    Instrumentation:
+      "instrumentation",
+    Process: "process",
+    Geology: "geology",
+    Civil: "civil",
+    Engineering:
+      "engineering",
+  };
+
+  return (
+    categorySlugs[
+      category
+    ] || "hse"
+  );
+}
+
+/* =========================
+   ARTICLE PAGE
+========================= */
+
+export default async function ArticlePage({
   params,
-}: CategoryPageProps) {
-  const { slug } = await params;
+}: ArticlePageProps) {
+  const { slug } =
+    await params;
 
-  const category = categoryMap[slug];
+  const article =
+    await getArticleBySlug(
+      slug
+    );
 
-  if (!category) {
+  if (!article) {
     notFound();
   }
 
-  const articles =
-    await getArticlesByCategory(
-      category.name
+  const relatedArticles =
+    await getRelatedArticles(
+      article.category,
+      article._id
     );
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <Navbar />
 
-      {/* HERO */}
+      <ArticleViewTracker
+        articleId={
+          article._id
+        }
+      />
 
-      <section className="border-b border-slate-800 px-6 py-20">
-        <div className="mx-auto max-w-7xl">
-          <div className="text-sm text-slate-500">
+      {/* =========================
+          ARTICLE HEADER
+      ========================= */}
+
+      <section className="border-b border-slate-800 px-6 py-14">
+        <div className="mx-auto max-w-4xl">
+
+          {/* BREADCRUMB */}
+
+          <div className="mb-6 flex flex-wrap items-center gap-2 text-sm text-slate-500">
             <Link
               href="/"
               className="transition hover:text-orange-400"
@@ -124,108 +156,395 @@ export default async function CategoryPage({
               Home
             </Link>
 
-            <span className="mx-2">
-              /
-            </span>
+            <span>/</span>
 
             <Link
-              href="/categories"
+              href={`/categories/${getCategorySlug(
+                article.category
+              )}`}
               className="transition hover:text-orange-400"
             >
-              Categories
+              {article.category}
             </Link>
 
-            <span className="mx-2">
-              /
-            </span>
+            <span>/</span>
 
-            <span className="text-slate-300">
-              {category.name}
+            <span className="text-slate-400">
+              {article.title}
             </span>
           </div>
 
-          <p className="mt-8 font-semibold uppercase tracking-[0.2em] text-orange-500">
-            PetroHub Category
-          </p>
+          {/* META */}
 
-          <h1 className="mt-3 text-4xl font-extrabold md:text-5xl">
-            {category.name}
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full bg-orange-500/10 px-3 py-1 text-sm font-semibold text-orange-400">
+              {
+                article.category
+              }
+            </span>
+
+            <span className="text-sm text-slate-500">
+              {article.views ??
+                0}{" "}
+              views
+            </span>
+
+            {article.updatedAt && (
+              <span className="text-sm text-slate-500">
+                Updated{" "}
+                {new Date(
+                  article.updatedAt
+                ).toLocaleDateString(
+                  "en-IN",
+                  {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  }
+                )}
+              </span>
+            )}
+          </div>
+
+          {/* TITLE */}
+
+          <h1 className="mt-6 text-4xl font-extrabold leading-tight md:text-6xl">
+            {article.title}
           </h1>
 
-          <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-400">
-            {category.description}
-          </p>
+          {/* SUMMARY */}
 
-          <div className="mt-8 inline-flex rounded-xl border border-slate-800 bg-slate-900 px-5 py-3">
-            <span className="text-2xl font-bold">
-              {articles.length}
+          {article.summary && (
+            <p className="mt-6 text-lg leading-8 text-slate-400">
+              {
+                article.summary
+              }
+            </p>
+          )}
+
+          {/* AUTHOR */}
+
+          <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-500">
+            <span>
+              Author:{" "}
+              {article.author ||
+                "PetroHub Team"}
             </span>
 
-            <span className="ml-2 self-center text-sm text-slate-500">
-              Published Articles
-            </span>
+            {article.source && (
+              <span>
+                Source:{" "}
+                {
+                  article.source
+                }
+              </span>
+            )}
+          </div>
+
+          {/* =========================
+              SAVE ARTICLE
+          ========================= */}
+
+          <div className="mt-8 flex flex-wrap items-center gap-4">
+            <BookmarkButton
+              itemType="article"
+              itemId={
+                article._id
+              }
+            />
+
+            <Link
+              href="/profile"
+              className="text-sm font-semibold text-slate-400 transition hover:text-orange-400"
+            >
+              View saved items →
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* ARTICLES */}
+      {/* =========================
+          COVER IMAGE
+      ========================= */}
 
-      <section className="px-6 py-16">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex flex-wrap items-end justify-between gap-5">
-            <div>
-              <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
-                Articles
-              </p>
-
-              <h2 className="mt-3 text-3xl font-bold">
-                Latest {category.name} Articles
-              </h2>
-            </div>
-
-            <Link
-              href="/articles"
-              className="font-semibold text-orange-400 transition hover:text-orange-300"
-            >
-              Browse all articles →
-            </Link>
+      {article.featuredImage && (
+        <section className="px-6 pt-10">
+          <div className="mx-auto max-w-5xl">
+            <img
+              src={
+                article.featuredImage
+              }
+              alt={
+                article.title
+              }
+              className="aspect-video w-full rounded-2xl border border-slate-800 object-cover shadow-2xl"
+            />
           </div>
+        </section>
+      )}
 
-          {articles.length === 0 ? (
-            <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-10">
-              <h3 className="text-xl font-bold">
-                No articles available yet
-              </h3>
+      {/* =========================
+          ARTICLE CONTENT
+      ========================= */}
 
-              <p className="mt-3 text-slate-400">
-                New {category.name} articles
-                will appear here once they are
-                published.
-              </p>
+      <section className="px-6 py-14">
+        <article className="mx-auto max-w-4xl rounded-2xl border border-slate-800 bg-slate-900 p-6 md:p-10">
 
-              <Link
-                href="/articles"
-                className="mt-6 inline-block font-semibold text-orange-400 hover:text-orange-300"
-              >
-                Explore other articles →
-              </Link>
-            </div>
-          ) : (
-            <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {articles.map(
-                (article: any) => (
-                  <ArticleCard
-                    key={article._id.toString()}
-                    articleId={
-                      article._id.toString()
+          <div
+            className="
+              prose
+              prose-invert
+              max-w-none
+
+              prose-headings:font-bold
+              prose-headings:text-white
+
+              prose-h1:mt-10
+              prose-h1:text-4xl
+
+              prose-h2:mt-10
+              prose-h2:text-3xl
+
+              prose-h3:mt-8
+              prose-h3:text-2xl
+
+              prose-p:leading-8
+              prose-p:text-slate-300
+
+              prose-strong:text-white
+
+              prose-a:text-orange-400
+              prose-a:no-underline
+              hover:prose-a:text-orange-300
+
+              prose-ul:my-6
+              prose-ol:my-6
+
+              prose-li:leading-7
+              prose-li:text-slate-300
+
+              prose-blockquote:border-orange-500
+              prose-blockquote:text-slate-400
+
+              prose-code:text-orange-300
+
+              prose-pre:border
+              prose-pre:border-slate-800
+              prose-pre:bg-slate-950
+
+              prose-hr:border-slate-800
+            "
+            dangerouslySetInnerHTML={{
+              __html:
+                article.content,
+            }}
+          />
+
+          {/* TAGS */}
+
+          {Array.isArray(
+            article.tags
+          ) &&
+            article.tags
+              .length > 0 && (
+              <div className="mt-12 border-t border-slate-800 pt-6">
+                <p className="mb-3 text-sm font-semibold text-slate-400">
+                  Tags
+                </p>
+
+                <div className="flex flex-wrap gap-2">
+                  {article.tags.map(
+                    (
+                      tag: string
+                    ) => (
+                      <span
+                        key={
+                          tag
+                        }
+                        className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-sm text-slate-300"
+                      >
+                        {
+                          tag
+                        }
+                      </span>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
+
+          {/* =========================
+              SOURCE & LICENSING
+          ========================= */}
+
+          {(article.sourceUrl ||
+            article.license) && (
+            <div className="mt-10 border-t border-slate-800 pt-6">
+              <h2 className="text-lg font-bold">
+                Source &
+                Licensing
+              </h2>
+
+              {article.source && (
+                <p className="mt-4 text-sm text-slate-400">
+                  Source:{" "}
+                  {
+                    article.source
+                  }
+                </p>
+              )}
+
+              {article.sourceUrl && (
+                <p className="mt-2 text-sm text-slate-400">
+                  Source URL:{" "}
+                  <a
+                    href={
+                      article.sourceUrl
                     }
-                  />
-                )
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-orange-400 transition hover:text-orange-300"
+                  >
+                    View original
+                    source
+                  </a>
+                </p>
+              )}
+
+              {article.license && (
+                <p className="mt-2 text-sm text-slate-400">
+                  License:{" "}
+                  {
+                    article.license
+                  }
+                </p>
               )}
             </div>
           )}
-        </div>
+
+          {/* BOTTOM SAVE BUTTON */}
+
+          <div className="mt-10 border-t border-slate-800 pt-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h3 className="font-bold">
+                  Save this
+                  article
+                </h3>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Add this article
+                  to your PetroHub
+                  saved collection.
+                </p>
+              </div>
+
+              <BookmarkButton
+                itemType="article"
+                itemId={
+                  article._id
+                }
+              />
+            </div>
+          </div>
+        </article>
       </section>
+
+      {/* =========================
+          RELATED ARTICLES
+      ========================= */}
+
+      {relatedArticles.length >
+        0 && (
+        <section className="border-t border-slate-800 px-6 py-16">
+          <div className="mx-auto max-w-5xl">
+            <p className="font-semibold uppercase tracking-widest text-orange-500">
+              Keep Learning
+            </p>
+
+            <div className="mt-3 flex items-end justify-between gap-6">
+              <h2 className="text-3xl font-bold">
+                Related Articles
+              </h2>
+
+              <Link
+                href={`/categories/${getCategorySlug(
+                  article.category
+                )}`}
+                className="hidden text-sm font-semibold text-orange-400 transition hover:text-orange-300 sm:block"
+              >
+                View all{" "}
+                {
+                  article.category
+                }{" "}
+                articles →
+              </Link>
+            </div>
+
+            <div className="mt-8 grid gap-6 md:grid-cols-3">
+              {relatedArticles.map(
+                (
+                  item: any
+                ) => (
+                  <Link
+                    key={
+                      item._id
+                    }
+                    href={`/articles/${item.slug}`}
+                    className="group overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 transition hover:-translate-y-1 hover:border-orange-500/50"
+                  >
+                    {item.featuredImage && (
+                      <img
+                        src={
+                          item.featuredImage
+                        }
+                        alt={
+                          item.title
+                        }
+                        className="aspect-video w-full object-cover"
+                      />
+                    )}
+
+                    <div className="p-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-orange-400">
+                          {
+                            item.category
+                          }
+                        </span>
+
+                        <span className="text-xs text-slate-500">
+                          {item.views ??
+                            0}{" "}
+                          views
+                        </span>
+                      </div>
+
+                      <h3 className="mt-4 text-lg font-bold leading-7 transition group-hover:text-orange-400">
+                        {
+                          item.title
+                        }
+                      </h3>
+
+                      {item.summary && (
+                        <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-400">
+                          {
+                            item.summary
+                          }
+                        </p>
+                      )}
+
+                      <p className="mt-5 text-sm font-semibold text-orange-400">
+                        Read article →
+                      </p>
+                    </div>
+                  </Link>
+                )
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       <Footer />
     </main>

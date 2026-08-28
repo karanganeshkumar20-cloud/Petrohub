@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import BookmarkButton from "@/components/BookmarkButton";
 
 import BookViewTracker from "@/components/library/BookViewTracker";
 import BookDownloadButton from "@/components/library/BookDownloadButton";
@@ -19,38 +20,56 @@ type Props = {
   }>;
 };
 
-async function getBook(slug: string) {
+/* =========================
+   GET BOOK
+========================= */
+
+async function getBook(
+  slug: string
+) {
   await connectDB();
 
-  const book = await BookModel.findOne({
-    slug,
-    status: "Published",
-  }).lean();
+  const book =
+    await BookModel.findOne({
+      slug,
+      status: "Published",
+    }).lean();
 
   if (!book) {
     return null;
   }
 
-  return JSON.parse(JSON.stringify(book));
+  return JSON.parse(
+    JSON.stringify(book)
+  );
 }
+
+/* =========================
+   METADATA
+========================= */
 
 export async function generateMetadata({
   params,
 }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug } =
+    await params;
 
-  const book = await getBook(slug);
+  const book =
+    await getBook(slug);
 
   if (!book) {
     return {
-      title: "Resource Not Found | PetroHub",
+      title:
+        "Resource Not Found | PetroHub",
+
       description:
         "The requested PetroHub library resource could not be found.",
     };
   }
 
   const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env
+      .NEXT_PUBLIC_SITE_URL ||
     "http://localhost:3000";
 
   const canonicalUrl =
@@ -60,7 +79,10 @@ export async function generateMetadata({
     `${book.title} | PetroHub`;
 
   const description =
-    book.description?.slice(0, 155) ||
+    book.description?.slice(
+      0,
+      155
+    ) ||
     `Explore ${book.title} in the PetroHub Engineering Library.`;
 
   return {
@@ -68,37 +90,52 @@ export async function generateMetadata({
     description,
 
     alternates: {
-      canonical: canonicalUrl,
+      canonical:
+        canonicalUrl,
     },
 
     openGraph: {
       title,
       description,
       url: canonicalUrl,
-      siteName: "PetroHub",
+      siteName:
+        "PetroHub",
       type: "article",
 
-      images: book.coverImage
-        ? [
-            {
-              url: book.coverImage,
-              alt: book.title,
-            },
-          ]
-        : [],
+      images:
+        book.coverImage
+          ? [
+              {
+                url:
+                  book.coverImage,
+
+                alt:
+                  book.title,
+              },
+            ]
+          : [],
     },
 
     twitter: {
-      card: "summary_large_image",
+      card:
+        "summary_large_image",
+
       title,
       description,
 
-      images: book.coverImage
-        ? [book.coverImage]
-        : [],
+      images:
+        book.coverImage
+          ? [
+              book.coverImage,
+            ]
+          : [],
     },
   };
 }
+
+/* =========================
+   RELATED RESOURCES
+========================= */
 
 async function getRelatedBooks(
   category: string,
@@ -106,29 +143,44 @@ async function getRelatedBooks(
 ) {
   await connectDB();
 
-  const books = await BookModel.find({
-    status: "Published",
-    category,
-    _id: {
-      $ne: bookId,
-    },
-  })
-    .sort({
-      featured: -1,
-      createdAt: -1,
-    })
-    .limit(4)
-    .lean();
+  const books =
+    await BookModel.find({
+      status:
+        "Published",
 
-  return JSON.parse(JSON.stringify(books));
+      category,
+
+      _id: {
+        $ne:
+          bookId,
+      },
+    })
+      .sort({
+        featured: -1,
+        createdAt: -1,
+      })
+      .limit(4)
+      .lean();
+
+  return JSON.parse(
+    JSON.stringify(
+      books
+    )
+  );
 }
+
+/* =========================
+   BOOK PAGE
+========================= */
 
 export default async function BookPage({
   params,
 }: Props) {
-  const { slug } = await params;
+  const { slug } =
+    await params;
 
-  const book = await getBook(slug);
+  const book =
+    await getBook(slug);
 
   if (!book) {
     notFound();
@@ -141,59 +193,83 @@ export default async function BookPage({
     );
 
   const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env
+      .NEXT_PUBLIC_SITE_URL ||
     "http://localhost:3000";
 
   const resourceUrl =
     `${siteUrl}/library/${book.slug}`;
 
+  /* =========================
+     STRUCTURED DATA
+  ========================= */
+
   const structuredData = {
-    "@context": "https://schema.org",
+    "@context":
+      "https://schema.org",
 
     "@type":
-      book.contentType === "book"
+      book.contentType ===
+      "book"
         ? "Book"
         : "CreativeWork",
 
-    name: book.title,
+    name:
+      book.title,
 
     description:
-      book.description || undefined,
+      book.description ||
+      undefined,
 
-    url: resourceUrl,
+    url:
+      resourceUrl,
 
     image:
-      book.coverImage || undefined,
+      book.coverImage ||
+      undefined,
 
-    author: book.author
-      ? {
-          "@type": "Person",
-          name: book.author,
-        }
-      : undefined,
+    author:
+      book.author
+        ? {
+            "@type":
+              "Person",
 
-    publisher: book.publisher
-      ? {
-          "@type": "Organization",
-          name: book.publisher,
-        }
-      : undefined,
+            name:
+              book.author,
+          }
+        : undefined,
+
+    publisher:
+      book.publisher
+        ? {
+            "@type":
+              "Organization",
+
+            name:
+              book.publisher,
+          }
+        : undefined,
 
     datePublished:
       book.year
-        ? String(book.year)
+        ? String(
+            book.year
+          )
         : undefined,
 
     educationalUse:
       "Professional and educational reference",
 
     isAccessibleForFree:
-      book.resourceType === "hosted",
+      book.resourceType ===
+      "hosted",
   };
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <Navbar />
+
+      {/* STRUCTURED DATA */}
 
       <script
         type="application/ld+json"
@@ -205,14 +281,23 @@ export default async function BookPage({
         }}
       />
 
+      {/* VIEW TRACKING */}
+
       <BookViewTracker
-        bookId={book._id}
+        bookId={
+          book._id
+        }
       />
 
-      {/* RESOURCE DETAILS */}
+      {/* =========================
+          RESOURCE DETAILS
+      ========================= */}
 
       <section className="border-b border-slate-800 px-6 py-12 md:py-16">
         <div className="mx-auto max-w-7xl">
+
+          {/* BACK */}
+
           <Link
             href="/library"
             className="inline-flex items-center gap-2 text-sm font-semibold text-orange-400 transition hover:text-orange-300"
@@ -221,14 +306,22 @@ export default async function BookPage({
           </Link>
 
           <div className="mt-10 grid gap-10 lg:grid-cols-[320px_1fr] xl:gap-14">
-            {/* COVER */}
+
+            {/* =========================
+                COVER
+            ========================= */}
 
             <div>
               <div className="sticky top-24">
+
                 {book.coverImage ? (
                   <img
-                    src={book.coverImage}
-                    alt={book.title}
+                    src={
+                      book.coverImage
+                    }
+                    alt={
+                      book.title
+                    }
                     className="w-full rounded-2xl border border-slate-800 object-cover shadow-2xl"
                   />
                 ) : (
@@ -237,11 +330,15 @@ export default async function BookPage({
                   </div>
                 )}
 
+                {/* QUICK STATS */}
+
                 <div className="mt-5 grid grid-cols-2 gap-3">
+
                   <QuickStat
                     label="Views"
                     value={
-                      book.views ?? 0
+                      book.views ??
+                      0
                     }
                   />
 
@@ -253,15 +350,54 @@ export default async function BookPage({
                     }
                   />
                 </div>
+
+                {/* SAVE CARD */}
+
+                <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900 p-4">
+                  <p className="font-semibold">
+                    Save for later
+                  </p>
+
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    Add this resource
+                    to your PetroHub
+                    saved collection.
+                  </p>
+
+                  <div className="mt-4">
+                    <BookmarkButton
+                      itemType="book"
+                      itemId={
+                        book._id
+                      }
+                      className="w-full"
+                    />
+                  </div>
+
+                  <Link
+                    href="/profile"
+                    className="mt-3 block text-center text-sm font-semibold text-slate-500 transition hover:text-orange-400"
+                  >
+                    View saved items →
+                  </Link>
+                </div>
               </div>
             </div>
 
-            {/* DETAILS */}
+            {/* =========================
+                DETAILS
+            ========================= */}
 
             <div>
+
+              {/* BADGES */}
+
               <div className="flex flex-wrap gap-2">
+
                 <Badge orange>
-                  {book.category}
+                  {
+                    book.category
+                  }
                 </Badge>
 
                 <Badge>
@@ -284,30 +420,47 @@ export default async function BookPage({
                 )}
               </div>
 
+              {/* TITLE */}
+
               <h1 className="mt-6 max-w-4xl text-4xl font-extrabold leading-tight md:text-5xl">
-                {book.title}
+                {
+                  book.title
+                }
               </h1>
+
+              {/* AUTHOR */}
 
               {book.author && (
                 <p className="mt-4 text-lg text-slate-400">
                   By{" "}
                   <span className="font-semibold text-slate-300">
-                    {book.author}
+                    {
+                      book.author
+                    }
                   </span>
                 </p>
               )}
 
+              {/* DESCRIPTION */}
+
               {book.description && (
                 <div className="mt-7 max-w-4xl">
                   <p className="whitespace-pre-line text-lg leading-8 text-slate-300">
-                    {book.description}
+                    {
+                      book.description
+                    }
                   </p>
                 </div>
               )}
 
-              {/* ACTIONS */}
+              {/* =========================
+                  ACTIONS
+              ========================= */}
 
               <div className="mt-8 flex flex-wrap gap-3">
+
+                {/* HOSTED RESOURCE */}
+
                 {book.resourceType ===
                   "hosted" &&
                   book.fileUrl && (
@@ -327,6 +480,8 @@ export default async function BookPage({
                     </>
                   )}
 
+                {/* EXTERNAL RESOURCE */}
+
                 {book.resourceType ===
                   "external" &&
                   book.externalUrl && (
@@ -338,9 +493,12 @@ export default async function BookPage({
                       rel="noopener noreferrer"
                       className="rounded-xl bg-orange-500 px-6 py-3 font-bold text-white transition hover:bg-orange-600"
                     >
-                      Visit Official Source →
+                      Visit Official
+                      Source →
                     </a>
                   )}
+
+                {/* SOURCE URL */}
 
                 {book.sourceUrl && (
                   <a
@@ -354,9 +512,20 @@ export default async function BookPage({
                     Source Information
                   </a>
                 )}
+
+                {/* SAVE BUTTON */}
+
+                <BookmarkButton
+                  itemType="book"
+                  itemId={
+                    book._id
+                  }
+                />
               </div>
 
-              {/* METADATA */}
+              {/* =========================
+                  RESOURCE INFO
+              ========================= */}
 
               <div className="mt-10">
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-500">
@@ -364,6 +533,7 @@ export default async function BookPage({
                 </p>
 
                 <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+
                   <Meta
                     label="Content Type"
                     value={getContentTypeLabel(
@@ -416,11 +586,14 @@ export default async function BookPage({
                 </div>
               </div>
 
-              {/* SOURCE */}
+              {/* =========================
+                  SOURCE & RIGHTS
+              ========================= */}
 
               {(book.source ||
                 book.license) && (
                 <div className="mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+
                   <div className="border-b border-slate-800 px-6 py-4">
                     <h2 className="font-bold">
                       Source & Rights
@@ -428,6 +601,7 @@ export default async function BookPage({
                   </div>
 
                   <div className="space-y-5 p-6">
+
                     {book.source && (
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -445,7 +619,8 @@ export default async function BookPage({
                     {book.license && (
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                          License / Rights
+                          License /
+                          Rights
                         </p>
 
                         <p className="mt-2 leading-6 text-slate-300">
@@ -459,7 +634,9 @@ export default async function BookPage({
                 </div>
               )}
 
-              {/* DISCLAIMER */}
+              {/* =========================
+                  DISCLAIMER
+              ========================= */}
 
               <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
                 <p className="text-sm leading-6 text-slate-400">
@@ -481,7 +658,9 @@ export default async function BookPage({
         </div>
       </section>
 
-      {/* PDF READER */}
+      {/* =========================
+          PDF READER
+      ========================= */}
 
       {book.resourceType ===
         "hosted" &&
@@ -491,7 +670,9 @@ export default async function BookPage({
             className="border-b border-slate-800 px-6 py-16"
           >
             <div className="mx-auto max-w-7xl">
+
               <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+
                 <div>
                   <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
                     Online Reader
@@ -509,15 +690,22 @@ export default async function BookPage({
                 </div>
 
                 <BookDownloadButton
-                  bookId={book._id}
+                  bookId={
+                    book._id
+                  }
                 />
               </div>
 
+              {/* PDF */}
+
               <div className="mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-xl">
+
                 <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
                   <div className="min-w-0">
                     <p className="truncate font-semibold">
-                      {book.title}
+                      {
+                        book.title
+                      }
                     </p>
 
                     <p className="mt-1 text-xs text-slate-500">
@@ -531,8 +719,12 @@ export default async function BookPage({
                 </div>
 
                 <iframe
-                  src={book.fileUrl}
-                  title={book.title}
+                  src={
+                    book.fileUrl
+                  }
+                  title={
+                    book.title
+                  }
                   className="h-[80vh] min-h-[600px] w-full bg-white"
                 />
               </div>
@@ -540,38 +732,50 @@ export default async function BookPage({
           </section>
         )}
 
-      {/* RELATED */}
+      {/* =========================
+          RELATED RESOURCES
+      ========================= */}
 
-      {relatedBooks.length > 0 && (
+      {relatedBooks.length >
+        0 && (
         <section className="px-6 py-16">
           <div className="mx-auto max-w-7xl">
+
             <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
               Continue Learning
             </p>
 
             <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+
               <div>
                 <h2 className="text-3xl font-bold">
                   Related Resources
                 </h2>
 
                 <p className="mt-3 text-slate-400">
-                  More resources from{" "}
-                  {book.category}.
+                  More resources
+                  from{" "}
+                  {
+                    book.category
+                  }
+                  .
                 </p>
               </div>
 
               <Link
                 href="/library"
-                className="font-semibold text-orange-400 hover:text-orange-300"
+                className="font-semibold text-orange-400 transition hover:text-orange-300"
               >
                 Browse Library →
               </Link>
             </div>
 
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+
               {relatedBooks.map(
-                (item: any) => (
+                (
+                  item: any
+                ) => (
                   <Link
                     key={
                       item._id
@@ -580,6 +784,7 @@ export default async function BookPage({
                     className="group overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 transition hover:-translate-y-1 hover:border-orange-500/50"
                   >
                     <div className="relative">
+
                       {item.coverImage ? (
                         <img
                           src={
@@ -604,6 +809,7 @@ export default async function BookPage({
                     </div>
 
                     <div className="p-5">
+
                       <span className="text-sm font-semibold text-orange-400">
                         {
                           item.category
@@ -641,6 +847,10 @@ export default async function BookPage({
   );
 }
 
+/* =========================
+   META CARD
+========================= */
+
 function Meta({
   label,
   value,
@@ -665,6 +875,10 @@ function Meta({
   );
 }
 
+/* =========================
+   QUICK STAT
+========================= */
+
 function QuickStat({
   label,
   value,
@@ -685,11 +899,17 @@ function QuickStat({
   );
 }
 
+/* =========================
+   BADGE
+========================= */
+
 function Badge({
   children,
   orange = false,
 }: {
-  children: React.ReactNode;
+  children:
+    React.ReactNode;
+
   orange?: boolean;
 }) {
   return (
@@ -705,10 +925,16 @@ function Badge({
   );
 }
 
+/* =========================
+   CONTENT TYPE
+========================= */
+
 function getContentTypeLabel(
   contentType?: string
 ) {
-  switch (contentType) {
+  switch (
+    contentType
+  ) {
     case "manual":
       return "Manual";
 
