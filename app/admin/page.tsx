@@ -267,6 +267,12 @@ export default async function AdminDashboardPage() {
               />
 
               <DashboardLink
+                href="/admin/users"
+                title="Manage Users"
+                description={`Review ${totalUsers} registered users and manage PetroHub account roles.`}
+              />
+
+              <DashboardLink
                 href="/admin/messages"
                 title={
                   unreadMessages > 0
