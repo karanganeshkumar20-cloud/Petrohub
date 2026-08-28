@@ -5,6 +5,11 @@ import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/mongodb";
 import User from "@/models/User";
 
+type AuthUserStatus = {
+  role?: string;
+  isBlocked?: boolean;
+};
+
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
@@ -19,6 +24,7 @@ export const authOptions: NextAuthOptions = {
           label: "Email",
           type: "email",
         },
+
         password: {
           label: "Password",
           type: "password",
@@ -34,10 +40,19 @@ export const authOptions: NextAuthOptions = {
 
         const email = credentials.email.trim().toLowerCase();
 
-        const user = await User.findOne({ email });
+        const user = await User.findOne({
+          email,
+        });
 
         if (!user) {
           throw new Error("Invalid email or password");
+        }
+
+        // Blocked account check
+        if (user.isBlocked === true) {
+          throw new Error(
+            "Your PetroHub account has been blocked. Please contact the administrator."
+          );
         }
 
         const passwordMatches = await bcrypt.compare(
@@ -54,6 +69,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           email: user.email,
           role: user.role ?? "user",
+          isBlocked: false,
         };
       },
     }),
@@ -61,9 +77,53 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async jwt({ token, user }) {
+      // First login
       if (user) {
         token.id = user.id;
-        token.role = (user as { role?: string }).role ?? "user";
+
+        token.role =
+          (user as {
+            role?: string;
+          }).role ?? "user";
+
+        token.isBlocked =
+          (user as {
+            isBlocked?: boolean;
+          }).isBlocked === true;
+
+        return token;
+      }
+
+      // Refresh account status from MongoDB
+      if (token.id) {
+        try {
+          await connectDB();
+
+          const dbUser = (await User.findById(token.id)
+            .select("role isBlocked")
+            .lean()) as AuthUserStatus | null;
+
+          // Account deleted
+          if (!dbUser) {
+            token.isBlocked = true;
+            token.role = "user";
+
+            return token;
+          }
+
+          // Account block status
+          token.isBlocked =
+            dbUser.isBlocked === true;
+
+          // Current role
+          token.role =
+            dbUser.role ?? "user";
+        } catch (error) {
+          console.error(
+            "Unable to refresh user authentication status:",
+            error
+          );
+        }
       }
 
       return token;
@@ -71,15 +131,21 @@ export const authOptions: NextAuthOptions = {
 
     async session({ session, token }) {
       if (session.user) {
-        (session.user as typeof session.user & {
-          id?: string;
-          role?: string;
-        }).id = token.id as string;
+        const sessionUser =
+          session.user as typeof session.user & {
+            id?: string;
+            role?: string;
+            isBlocked?: boolean;
+          };
 
-        (session.user as typeof session.user & {
-          id?: string;
-          role?: string;
-        }).role = token.role as string;
+        sessionUser.id =
+          token.id as string;
+
+        sessionUser.role =
+          token.role as string;
+
+        sessionUser.isBlocked =
+          token.isBlocked === true;
       }
 
       return session;

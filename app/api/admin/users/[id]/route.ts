@@ -4,19 +4,13 @@ import {
 } from "next/server";
 
 import mongoose from "mongoose";
-
-import {
-  getServerSession,
-} from "next-auth";
+import { getServerSession } from "next-auth";
 
 import { connectDB } from "@/lib/mongodb";
 import { requireAdmin } from "@/lib/admin";
+import { authOptions } from "@/lib/auth";
 
 import User from "@/models/User";
-
-import {
-  authOptions,
-} from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -26,30 +20,32 @@ type RouteProps = {
   }>;
 };
 
+/* =========================================================
+   UPDATE USER
+   - Change role
+   - Block / Unblock
+========================================================= */
+
 export async function PATCH(
   request: NextRequest,
   { params }: RouteProps
 ) {
   try {
-    const admin =
-      await requireAdmin();
+    const admin = await requireAdmin();
 
     if (!admin.authorized) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            admin.message,
+          message: admin.message,
         },
         {
-          status:
-            admin.status,
+          status: admin.status,
         }
       );
     }
 
-    const { id } =
-      await params;
+    const { id } = await params;
 
     if (
       !mongoose.Types.ObjectId.isValid(
@@ -59,8 +55,7 @@ export async function PATCH(
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Invalid user ID",
+          message: "Invalid user ID",
         },
         {
           status: 400,
@@ -73,46 +68,31 @@ export async function PATCH(
         authOptions
       );
 
-    const body =
-      await request.json();
-
-    const role =
-      typeof body.role ===
-      "string"
-        ? body.role
-        : "";
-
-    if (
-      ![
-        "user",
-        "admin",
-      ].includes(role)
-    ) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Invalid user role",
+          message: "Unauthorized",
         },
         {
-          status: 400,
+          status: 401,
         }
       );
     }
 
+    const body =
+      await request.json();
+
     await connectDB();
 
     const user =
-      await User.findById(
-        id
-      );
+      await User.findById(id);
 
     if (!user) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "User not found",
+          message: "User not found",
         },
         {
           status: 404,
@@ -120,31 +100,181 @@ export async function PATCH(
       );
     }
 
-    if (
-      session?.user?.email &&
+    const isSelf =
       user.email.toLowerCase() ===
-        session.user.email.toLowerCase()
+      session.user.email.toLowerCase();
+
+    /* =========================
+       ROLE CHANGE
+    ========================= */
+
+    if (
+      Object.prototype.hasOwnProperty.call(
+        body,
+        "role"
+      )
     ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "You cannot change your own role.",
-        },
-        {
-          status: 400,
+      if (
+        !["user", "admin"].includes(
+          body.role
+        )
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Invalid user role",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
+      if (isSelf) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "You cannot change your own role.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
+      /*
+       * Protect final admin
+       */
+
+      if (
+        user.role === "admin" &&
+        body.role === "user"
+      ) {
+        const adminCount =
+          await User.countDocuments({
+            role: "admin",
+          });
+
+        if (adminCount <= 1) {
+          return NextResponse.json(
+            {
+              success: false,
+              message:
+                "The final administrator cannot be demoted.",
+            },
+            {
+              status: 400,
+            }
+          );
         }
-      );
+      }
+
+      user.role = body.role;
     }
 
-    user.role = role;
+    /* =========================
+       BLOCK / UNBLOCK
+    ========================= */
+
+    if (
+      Object.prototype.hasOwnProperty.call(
+        body,
+        "isBlocked"
+      )
+    ) {
+      if (
+        typeof body.isBlocked !==
+        "boolean"
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Invalid block status",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
+      /*
+       * Admin cannot block themselves
+       */
+
+      if (isSelf) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "You cannot block your own account.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
+
+      /*
+       * Protect final admin
+       */
+
+      if (
+        user.role === "admin" &&
+        body.isBlocked === true
+      ) {
+        const activeAdminCount =
+          await User.countDocuments({
+            role: "admin",
+            isBlocked: {
+              $ne: true,
+            },
+          });
+
+        if (activeAdminCount <= 1) {
+          return NextResponse.json(
+            {
+              success: false,
+              message:
+                "The final active administrator cannot be blocked.",
+            },
+            {
+              status: 400,
+            }
+          );
+        }
+      }
+
+      user.isBlocked =
+        body.isBlocked;
+    }
 
     await user.save();
 
     return NextResponse.json({
       success: true,
+
       message:
-        "User role updated",
+        "User updated successfully",
+
+      user: {
+        _id:
+          user._id.toString(),
+
+        name:
+          user.name,
+
+        email:
+          user.email,
+
+        role:
+          user.role,
+
+        isBlocked:
+          user.isBlocked === true,
+      },
     });
   } catch (error) {
     console.error(
@@ -165,6 +295,10 @@ export async function PATCH(
   }
 }
 
+/* =========================================================
+   DELETE USER
+========================================================= */
+
 export async function DELETE(
   _request: NextRequest,
   { params }: RouteProps
@@ -177,12 +311,10 @@ export async function DELETE(
       return NextResponse.json(
         {
           success: false,
-          message:
-            admin.message,
+          message: admin.message,
         },
         {
-          status:
-            admin.status,
+          status: admin.status,
         }
       );
     }
@@ -212,12 +344,22 @@ export async function DELETE(
         authOptions
       );
 
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Unauthorized",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
     await connectDB();
 
     const user =
-      await User.findById(
-        id
-      );
+      await User.findById(id);
 
     if (!user) {
       return NextResponse.json(
@@ -232,21 +374,47 @@ export async function DELETE(
       );
     }
 
-    if (
-      session?.user?.email &&
+    const isSelf =
       user.email.toLowerCase() ===
-        session.user.email.toLowerCase()
-    ) {
+      session.user.email.toLowerCase();
+
+    if (isSelf) {
       return NextResponse.json(
         {
           success: false,
           message:
-            "You cannot delete your own account from the admin panel.",
+            "You cannot delete your own account.",
         },
         {
           status: 400,
         }
       );
+    }
+
+    /*
+     * Protect final admin
+     */
+
+    if (
+      user.role === "admin"
+    ) {
+      const adminCount =
+        await User.countDocuments({
+          role: "admin",
+        });
+
+      if (adminCount <= 1) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "The final administrator cannot be deleted.",
+          },
+          {
+            status: 400,
+          }
+        );
+      }
     }
 
     await User.findByIdAndDelete(

@@ -13,12 +13,18 @@ type UserRole =
   | "user"
   | "admin";
 
+type StatusFilter =
+  | "All"
+  | "Active"
+  | "Blocked";
+
 type PetroHubUser = {
   _id: string;
   name: string;
   email: string;
   role: UserRole;
   image?: string;
+  isBlocked?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -43,13 +49,23 @@ export default function UsersManager({
       initialUsers
     );
 
-  const [search, setSearch] =
-    useState("");
+  const [
+    search,
+    setSearch,
+  ] = useState("");
 
   const [
     roleFilter,
     setRoleFilter,
   ] = useState("All");
+
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] =
+    useState<StatusFilter>(
+      "All"
+    );
 
   const [
     processingId,
@@ -59,15 +75,23 @@ export default function UsersManager({
       null
     );
 
-  const [error, setError] =
-    useState("");
+  const [
+    error,
+    setError,
+  ] = useState("");
 
-  const [success, setSuccess] =
-    useState("");
+  const [
+    success,
+    setSuccess,
+  ] = useState("");
 
   const currentUserEmail =
     session?.user?.email
       ?.toLowerCase() || "";
+
+  /* =========================
+     COUNTERS
+  ========================= */
 
   const counts =
     useMemo(() => {
@@ -82,14 +106,25 @@ export default function UsersManager({
               "admin"
           ).length,
 
-        users:
+        active:
           users.filter(
             (user) =>
-              user.role ===
-              "user"
+              user.isBlocked !==
+              true
+          ).length,
+
+        blocked:
+          users.filter(
+            (user) =>
+              user.isBlocked ===
+              true
           ).length,
       };
     }, [users]);
+
+  /* =========================
+     FILTER USERS
+  ========================= */
 
   const filteredUsers =
     useMemo(() => {
@@ -110,14 +145,31 @@ export default function UsersManager({
             !query ||
             user.name
               ?.toLowerCase()
-              .includes(query) ||
+              .includes(
+                query
+              ) ||
             user.email
               .toLowerCase()
-              .includes(query);
+              .includes(
+                query
+              );
+
+          const matchesStatus =
+            statusFilter ===
+              "All" ||
+            (statusFilter ===
+              "Active" &&
+              user.isBlocked !==
+                true) ||
+            (statusFilter ===
+              "Blocked" &&
+              user.isBlocked ===
+                true);
 
           return (
             matchesRole &&
-            matchesSearch
+            matchesSearch &&
+            matchesStatus
           );
         }
       );
@@ -125,7 +177,12 @@ export default function UsersManager({
       users,
       search,
       roleFilter,
+      statusFilter,
     ]);
+
+  /* =========================
+     CHANGE ROLE
+  ========================= */
 
   async function changeRole(
     user: PetroHubUser,
@@ -138,12 +195,19 @@ export default function UsersManager({
       setError(
         "You cannot change your own role."
       );
+
+      return;
+    }
+
+    if (
+      user.role === role
+    ) {
       return;
     }
 
     const confirmed =
       window.confirm(
-        `Change ${user.name}'s role to ${role}?`
+        `Change ${user.name}'s role from ${user.role} to ${role}?`
       );
 
     if (!confirmed) {
@@ -162,27 +226,34 @@ export default function UsersManager({
         await fetch(
           `/api/admin/users/${user._id}`,
           {
-            method: "PATCH",
+            method:
+              "PATCH",
 
             headers: {
               "Content-Type":
                 "application/json",
             },
 
-            body: JSON.stringify({
-              role,
-            }),
+            body:
+              JSON.stringify({
+                role,
+              }),
           }
         );
 
       const text =
         await response.text();
 
-      let data: any = {};
+      let data: {
+        success?: boolean;
+        message?: string;
+      } = {};
 
       try {
         data = text
-          ? JSON.parse(text)
+          ? JSON.parse(
+              text
+            )
           : {};
       } catch {
         throw new Error(
@@ -196,7 +267,7 @@ export default function UsersManager({
       ) {
         throw new Error(
           data.message ||
-            "Unable to update user"
+            "Unable to update user role"
         );
       }
 
@@ -215,18 +286,162 @@ export default function UsersManager({
       );
 
       setSuccess(
-        `${user.name}'s role changed to ${role}.`
+        `${user.name}'s role was changed to ${role}.`
       );
     } catch (error) {
       setError(
-        error instanceof Error
+        error instanceof
+          Error
           ? error.message
-          : "Unable to update user"
+          : "Unable to update user role"
       );
     } finally {
-      setProcessingId(null);
+      setProcessingId(
+        null
+      );
     }
   }
+
+  /* =========================
+     BLOCK / UNBLOCK
+  ========================= */
+
+  async function toggleBlock(
+    user: PetroHubUser
+  ) {
+    if (
+      user.email.toLowerCase() ===
+      currentUserEmail
+    ) {
+      setError(
+        "You cannot block your own account."
+      );
+
+      return;
+    }
+
+    const currentlyBlocked =
+      user.isBlocked ===
+      true;
+
+    const nextBlocked =
+      !currentlyBlocked;
+
+    const action =
+      nextBlocked
+        ? "block"
+        : "unblock";
+
+    const confirmed =
+      window.confirm(
+        `${
+          nextBlocked
+            ? "Block"
+            : "Unblock"
+        } ${user.name}'s account?`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setProcessingId(
+      user._id
+    );
+
+    setError("");
+    setSuccess("");
+
+    try {
+      const response =
+        await fetch(
+          `/api/admin/users/${user._id}`,
+          {
+            method:
+              "PATCH",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify({
+                isBlocked:
+                  nextBlocked,
+              }),
+          }
+        );
+
+      const text =
+        await response.text();
+
+      let data: {
+        success?: boolean;
+        message?: string;
+      } = {};
+
+      try {
+        data = text
+          ? JSON.parse(
+              text
+            )
+          : {};
+      } catch {
+        throw new Error(
+          `Invalid server response (${response.status})`
+        );
+      }
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data.message ||
+            `Unable to ${action} user`
+        );
+      }
+
+      setUsers(
+        (current) =>
+          current.map(
+            (item) =>
+              item._id ===
+              user._id
+                ? {
+                    ...item,
+                    isBlocked:
+                      nextBlocked,
+                  }
+                : item
+          )
+      );
+
+      setSuccess(
+        `${user.name}'s account was ${
+          nextBlocked
+            ? "blocked"
+            : "unblocked"
+        }.`
+      );
+    } catch (error) {
+      setError(
+        error instanceof
+          Error
+          ? error.message
+          : `Unable to ${action} user`
+      );
+    } finally {
+      setProcessingId(
+        null
+      );
+    }
+  }
+
+  /* =========================
+     DELETE USER
+  ========================= */
 
   async function deleteUser(
     user: PetroHubUser
@@ -238,12 +453,13 @@ export default function UsersManager({
       setError(
         "You cannot delete your own account from the admin panel."
       );
+
       return;
     }
 
     const confirmed =
       window.confirm(
-        `Delete ${user.name}'s account permanently?`
+        `Delete ${user.name}'s account permanently?\n\nThis action cannot be undone.`
       );
 
     if (!confirmed) {
@@ -270,11 +486,16 @@ export default function UsersManager({
       const text =
         await response.text();
 
-      let data: any = {};
+      let data: {
+        success?: boolean;
+        message?: string;
+      } = {};
 
       try {
         data = text
-          ? JSON.parse(text)
+          ? JSON.parse(
+              text
+            )
           : {};
       } catch {
         throw new Error(
@@ -302,24 +523,31 @@ export default function UsersManager({
       );
 
       setSuccess(
-        `${user.name}'s account was deleted.`
+        `${user.name}'s account was deleted successfully.`
       );
     } catch (error) {
       setError(
-        error instanceof Error
+        error instanceof
+          Error
           ? error.message
           : "Unable to delete user"
       );
     } finally {
-      setProcessingId(null);
+      setProcessingId(
+        null
+      );
     }
   }
 
+  /* =========================
+     UI
+  ========================= */
+
   return (
     <div>
-      {/* STATS */}
+      {/* STATISTICS */}
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <UserStat
           label="Total Users"
           value={
@@ -335,66 +563,161 @@ export default function UsersManager({
         />
 
         <UserStat
-          label="Standard Users"
+          label="Active Accounts"
           value={
-            counts.users
+            counts.active
+          }
+        />
+
+        <UserStat
+          label="Blocked Accounts"
+          value={
+            counts.blocked
+          }
+          danger={
+            counts.blocked > 0
           }
         />
       </div>
 
       {/* FILTERS */}
 
-      <div className="mt-8 grid gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 md:grid-cols-[1fr_220px]">
-        <input
-          type="search"
-          value={search}
-          onChange={(event) =>
-            setSearch(
-              event.target.value
-            )
-          }
-          placeholder="Search name or email..."
-          className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500"
-        />
+      <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <div className="grid gap-4 lg:grid-cols-[1fr_200px_200px]">
 
-        <select
-          value={
-            roleFilter
-          }
-          onChange={(event) =>
-            setRoleFilter(
-              event.target.value
-            )
-          }
-          className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
-        >
-          <option value="All">
-            All Roles
-          </option>
+          <input
+            type="search"
+            value={
+              search
+            }
+            onChange={(
+              event
+            ) =>
+              setSearch(
+                event
+                  .target
+                  .value
+              )
+            }
+            placeholder="Search by name or email..."
+            className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500"
+          />
 
-          <option value="admin">
-            Admin
-          </option>
+          <select
+            value={
+              roleFilter
+            }
+            onChange={(
+              event
+            ) =>
+              setRoleFilter(
+                event
+                  .target
+                  .value
+              )
+            }
+            className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+          >
+            <option value="All">
+              All Roles
+            </option>
 
-          <option value="user">
-            User
-          </option>
-        </select>
+            <option value="admin">
+              Administrator
+            </option>
+
+            <option value="user">
+              User
+            </option>
+          </select>
+
+          <select
+            value={
+              statusFilter
+            }
+            onChange={(
+              event
+            ) =>
+              setStatusFilter(
+                event
+                  .target
+                  .value as StatusFilter
+              )
+            }
+            className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+          >
+            <option value="All">
+              All Status
+            </option>
+
+            <option value="Active">
+              Active
+            </option>
+
+            <option value="Blocked">
+              Blocked
+            </option>
+          </select>
+        </div>
+
+        <p className="mt-4 text-sm text-slate-500">
+          Showing{" "}
+          <span className="font-semibold text-slate-300">
+            {
+              filteredUsers.length
+            }
+          </span>{" "}
+          of{" "}
+          <span className="font-semibold text-slate-300">
+            {
+              users.length
+            }
+          </span>{" "}
+          registered users.
+        </p>
       </div>
 
+      {/* ERROR */}
+
       {error && (
-        <div className="mt-5 rounded-xl border border-red-900 bg-red-950/40 p-4 text-red-300">
-          {error}
+        <div className="mt-5 flex items-start justify-between gap-4 rounded-xl border border-red-900 bg-red-950/40 p-4 text-red-300">
+          <p>
+            {error}
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              setError("")
+            }
+            className="text-sm font-bold"
+          >
+            ×
+          </button>
         </div>
       )}
+
+      {/* SUCCESS */}
 
       {success && (
-        <div className="mt-5 rounded-xl border border-green-800 bg-green-500/10 p-4 text-green-400">
-          {success}
+        <div className="mt-5 flex items-start justify-between gap-4 rounded-xl border border-green-800 bg-green-500/10 p-4 text-green-400">
+          <p>
+            {success}
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              setSuccess("")
+            }
+            className="text-sm font-bold"
+          >
+            ×
+          </button>
         </div>
       )}
 
-      {/* USERS */}
+      {/* EMPTY */}
 
       {filteredUsers.length ===
       0 ? (
@@ -404,16 +727,20 @@ export default function UsersManager({
           </h2>
 
           <p className="mt-3 text-slate-400">
-            No PetroHub users
-            match the current
-            search or role filter.
+            No PetroHub
+            accounts match
+            the selected search
+            and filters.
           </p>
         </div>
       ) : (
+        /* USERS TABLE */
+
         <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
           <div className="overflow-x-auto">
             <table className="min-w-full">
-              <thead className="border-b border-slate-800">
+
+              <thead className="border-b border-slate-800 bg-slate-950/50">
                 <tr>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">
                     User
@@ -421,6 +748,10 @@ export default function UsersManager({
 
                   <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">
                     Role
+                  </th>
+
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">
+                    Status
                   </th>
 
                   <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">
@@ -440,15 +771,31 @@ export default function UsersManager({
                       user.email.toLowerCase() ===
                       currentUserEmail;
 
+                    const isBlocked =
+                      user.isBlocked ===
+                      true;
+
+                    const processing =
+                      processingId ===
+                      user._id;
+
                     return (
                       <tr
                         key={
                           user._id
                         }
-                        className="border-b border-slate-800 last:border-b-0"
+                        className={
+                          isBlocked
+                            ? "border-b border-slate-800 bg-red-500/[0.03] last:border-b-0"
+                            : "border-b border-slate-800 last:border-b-0"
+                        }
                       >
+
+                        {/* USER */}
+
                         <td className="px-6 py-5">
-                          <div className="flex items-center gap-4">
+                          <div className="flex min-w-[250px] items-center gap-4">
+
                             {user.image ? (
                               <img
                                 src={
@@ -457,10 +804,10 @@ export default function UsersManager({
                                 alt={
                                   user.name
                                 }
-                                className="h-11 w-11 rounded-full object-cover"
+                                className="h-12 w-12 rounded-full object-cover"
                               />
                             ) : (
-                              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-500/10 font-bold text-orange-400">
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-500/10 text-lg font-bold text-orange-400">
                                 {user.name
                                   ?.charAt(
                                     0
@@ -479,7 +826,7 @@ export default function UsersManager({
                                 </p>
 
                                 {isSelf && (
-                                  <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-400">
+                                  <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-bold text-blue-400">
                                     You
                                   </span>
                                 )}
@@ -494,6 +841,8 @@ export default function UsersManager({
                           </div>
                         </td>
 
+                        {/* ROLE */}
+
                         <td className="px-6 py-5">
                           <RoleBadge
                             role={
@@ -502,24 +851,42 @@ export default function UsersManager({
                           />
                         </td>
 
-                        <td className="px-6 py-5 text-sm text-slate-500">
+                        {/* STATUS */}
+
+                        <td className="px-6 py-5">
+                          <StatusBadge
+                            blocked={
+                              isBlocked
+                            }
+                          />
+                        </td>
+
+                        {/* JOINED */}
+
+                        <td className="whitespace-nowrap px-6 py-5 text-sm text-slate-500">
                           {formatDate(
                             user.createdAt
                           )}
                         </td>
 
+                        {/* ACTIONS */}
+
                         <td className="px-6 py-5">
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex min-w-[340px] flex-wrap gap-2">
+
+                            {/* ROLE */}
+
                             <select
                               value={
                                 user.role
                               }
                               disabled={
                                 isSelf ||
-                                processingId ===
-                                  user._id
+                                processing
                               }
-                              onChange={(event) =>
+                              onChange={(
+                                event
+                              ) =>
                                 changeRole(
                                   user,
                                   event
@@ -527,7 +894,7 @@ export default function UsersManager({
                                     .value as UserRole
                                 )
                               }
-                              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white outline-none focus:border-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
                             >
                               <option value="user">
                                 User
@@ -538,12 +905,39 @@ export default function UsersManager({
                               </option>
                             </select>
 
+                            {/* BLOCK */}
+
                             <button
                               type="button"
                               disabled={
                                 isSelf ||
-                                processingId ===
-                                  user._id
+                                processing
+                              }
+                              onClick={() =>
+                                toggleBlock(
+                                  user
+                                )
+                              }
+                              className={
+                                isBlocked
+                                  ? "rounded-lg border border-green-800 px-4 py-2 text-sm font-semibold text-green-400 transition hover:bg-green-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+                                  : "rounded-lg border border-yellow-800 px-4 py-2 text-sm font-semibold text-yellow-400 transition hover:bg-yellow-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+                              }
+                            >
+                              {processing
+                                ? "Please wait..."
+                                : isBlocked
+                                  ? "Unblock"
+                                  : "Block"}
+                            </button>
+
+                            {/* DELETE */}
+
+                            <button
+                              type="button"
+                              disabled={
+                                isSelf ||
+                                processing
                               }
                               onClick={() =>
                                 deleteUser(
@@ -555,6 +949,15 @@ export default function UsersManager({
                               Delete
                             </button>
                           </div>
+
+                          {isSelf && (
+                            <p className="mt-2 text-xs text-slate-600">
+                              Your own
+                              administrator
+                              account is
+                              protected.
+                            </p>
+                          )}
                         </td>
                       </tr>
                     );
@@ -569,25 +972,47 @@ export default function UsersManager({
   );
 }
 
+/* =========================
+   STAT CARD
+========================= */
+
 function UserStat({
   label,
   value,
+  danger = false,
 }: {
   label: string;
   value: number;
+  danger?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <div
+      className={
+        danger
+          ? "rounded-2xl border border-red-900/80 bg-red-500/10 p-5"
+          : "rounded-2xl border border-slate-800 bg-slate-900 p-5"
+      }
+    >
       <p className="text-sm text-slate-500">
         {label}
       </p>
 
-      <p className="mt-2 text-3xl font-bold">
+      <p
+        className={
+          danger
+            ? "mt-2 text-3xl font-bold text-red-400"
+            : "mt-2 text-3xl font-bold"
+        }
+      >
         {value}
       </p>
     </div>
   );
 }
+
+/* =========================
+   ROLE BADGE
+========================= */
 
 function RoleBadge({
   role,
@@ -606,6 +1031,34 @@ function RoleBadge({
     </span>
   );
 }
+
+/* =========================
+   STATUS BADGE
+========================= */
+
+function StatusBadge({
+  blocked,
+}: {
+  blocked: boolean;
+}) {
+  return (
+    <span
+      className={
+        blocked
+          ? "rounded-full bg-red-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-400"
+          : "rounded-full bg-green-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-green-400"
+      }
+    >
+      {blocked
+        ? "Blocked"
+        : "Active"}
+    </span>
+  );
+}
+
+/* =========================
+   DATE FORMAT
+========================= */
 
 function formatDate(
   value?: string
