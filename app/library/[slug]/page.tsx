@@ -8,6 +8,7 @@ import BookmarkButton from "@/components/BookmarkButton";
 
 import BookViewTracker from "@/components/library/BookViewTracker";
 import BookDownloadButton from "@/components/library/BookDownloadButton";
+import ReadingHistoryTracker from "@/components/ReadingHistoryTracker";
 
 import { connectDB } from "@/lib/mongodb";
 import { BookModel } from "@/models/Book";
@@ -288,6 +289,12 @@ export default async function BookPage({
           book._id
         }
       />
+
+      <ReadingHistoryTracker
+  itemType="book"
+  itemId={String(book._id)}
+/>
+
 
       {/* =========================
           RESOURCE DETAILS

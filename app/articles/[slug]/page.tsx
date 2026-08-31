@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ArticleViewTracker from "@/components/ArticleViewTracker";
+import BookmarkButton from "@/components/BookmarkButton";
+import ReadingHistoryTracker from "@/components/ReadingHistoryTracker";
 
 import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
@@ -88,6 +90,10 @@ export default async function ArticlePage({
       <Navbar />
 
       <ArticleViewTracker articleId={article._id} />
+      <ReadingHistoryTracker
+  itemType="article"
+  itemId={String(article._id)}
+/>
 
       {/* Header */}
       <section className="border-b border-slate-800 px-6 py-14">
@@ -165,6 +171,21 @@ export default async function ArticlePage({
           </div>
         </div>
       </section>
+      {/* SAVE ARTICLE */}
+
+<div className="mt-8 flex flex-wrap items-center gap-4">
+  <BookmarkButton
+    itemType="article"
+    itemId={String(article._id)}
+  />
+
+  <Link
+    href="/profile"
+    className="text-sm font-semibold text-slate-400 transition hover:text-orange-400"
+  >
+    View saved items →
+  </Link>
+</div>
 
       {/* Cover Image */}
       {article.featuredImage && (

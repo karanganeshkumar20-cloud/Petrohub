@@ -7,7 +7,15 @@ import {
 
 type ImageUploadProps = {
   value: string;
-  onChange: (url: string) => void;
+
+  onChange:
+    (url: string) => void;
+
+  label?: string;
+
+  signatureEndpoint?: string;
+
+  profileMode?: boolean;
 };
 
 type SignatureResponse = {
@@ -29,20 +37,35 @@ type SignatureResponse = {
 export default function ImageUpload({
   value,
   onChange,
+
+  label = "Cover Image",
+
+  signatureEndpoint =
+    "/api/cloudinary/sign-image",
+
+  profileMode = false,
 }: ImageUploadProps) {
-  const [uploading, setUploading] =
+  const [
+    uploading,
+    setUploading,
+  ] =
     useState(false);
 
-  const [error, setError] =
+  const [
+    error,
+    setError,
+  ] =
     useState("");
 
   const [
     progressText,
     setProgressText,
-  ] = useState("");
+  ] =
+    useState("");
 
   async function handleFileChange(
-    event: ChangeEvent<HTMLInputElement>
+    event:
+      ChangeEvent<HTMLInputElement>
   ) {
     const file =
       event.target.files?.[0];
@@ -73,9 +96,14 @@ export default function ImageUpload({
       }
 
       const maxSize =
-        5 * 1024 * 1024;
+        5 *
+        1024 *
+        1024;
 
-      if (file.size > maxSize) {
+      if (
+        file.size >
+        maxSize
+      ) {
         throw new Error(
           "Image must be smaller than 5 MB"
         );
@@ -85,16 +113,9 @@ export default function ImageUpload({
         "Preparing secure upload..."
       );
 
-      /*
-       * Get signed upload parameters
-       * from PetroHub.
-       *
-       * API secret stays only
-       * on the server.
-       */
       const signatureResponse =
         await fetch(
-          "/api/cloudinary/sign-image",
+          signatureEndpoint,
           {
             method: "GET",
             cache: "no-store",
@@ -138,7 +159,8 @@ export default function ImageUpload({
         timestamp,
         folder,
         signature,
-      } = signatureData;
+      } =
+        signatureData;
 
       if (
         !cloudName ||
@@ -156,14 +178,6 @@ export default function ImageUpload({
         "Uploading image directly to Cloudinary..."
       );
 
-      /*
-       * Image goes directly:
-       *
-       * Browser → Cloudinary
-       *
-       * It does not pass through
-       * the Vercel API route.
-       */
       const formData =
         new FormData();
 
@@ -179,7 +193,9 @@ export default function ImageUpload({
 
       formData.append(
         "timestamp",
-        String(timestamp)
+        String(
+          timestamp
+        )
       );
 
       formData.append(
@@ -207,7 +223,8 @@ export default function ImageUpload({
       const responseText =
         await uploadResponse.text();
 
-      let uploadData: any;
+      let uploadData:
+        any;
 
       try {
         uploadData =
@@ -222,7 +239,9 @@ export default function ImageUpload({
         );
       }
 
-      if (!uploadResponse.ok) {
+      if (
+        !uploadResponse.ok
+      ) {
         throw new Error(
           uploadData?.error
             ?.message ||
@@ -231,7 +250,8 @@ export default function ImageUpload({
       }
 
       if (
-        !uploadData.secure_url
+        !uploadData
+          .secure_url
       ) {
         throw new Error(
           "Cloudinary upload completed but returned no image URL"
@@ -239,7 +259,8 @@ export default function ImageUpload({
       }
 
       onChange(
-        uploadData.secure_url
+        uploadData
+          .secure_url
       );
 
       setProgressText(
@@ -261,14 +282,15 @@ export default function ImageUpload({
     } finally {
       setUploading(false);
 
-      event.target.value = "";
+      event.target.value =
+        "";
     }
   }
 
   return (
     <div>
       <label className="mb-2 block text-sm font-semibold text-slate-300">
-        Cover Image
+        {label}
       </label>
 
       <input
@@ -277,7 +299,9 @@ export default function ImageUpload({
         onChange={
           handleFileChange
         }
-        disabled={uploading}
+        disabled={
+          uploading
+        }
         className="block w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300 disabled:cursor-not-allowed disabled:opacity-60"
       />
 
@@ -294,7 +318,9 @@ export default function ImageUpload({
 
           {progressText && (
             <p className="mt-2 text-sm text-slate-400">
-              {progressText}
+              {
+                progressText
+              }
             </p>
           )}
         </div>
@@ -316,8 +342,16 @@ export default function ImageUpload({
         <div className="mt-5">
           <img
             src={value}
-            alt="Cover preview"
-            className="max-h-80 w-full rounded-xl object-cover"
+            alt={
+              profileMode
+                ? "Profile preview"
+                : "Cover preview"
+            }
+            className={
+              profileMode
+                ? "h-32 w-32 rounded-full border border-slate-700 object-cover"
+                : "max-h-80 w-full rounded-xl object-cover"
+            }
           />
 
           {!uploading &&
@@ -333,7 +367,9 @@ export default function ImageUpload({
             onClick={() =>
               onChange("")
             }
-            disabled={uploading}
+            disabled={
+              uploading
+            }
             className="mt-3 text-sm font-semibold text-red-400 hover:text-red-300 disabled:opacity-50"
           >
             Remove image

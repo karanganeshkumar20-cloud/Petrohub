@@ -25,7 +25,6 @@ export default function BookmarkButton({
   className = "",
 }: Props) {
   const {
-    data: session,
     status,
   } = useSession();
 
@@ -45,69 +44,74 @@ export default function BookmarkButton({
   const [
     loading,
     setLoading,
-  ] = useState(false);
-
-  const [
-    checking,
-    setChecking,
   ] = useState(true);
 
   const [
-    error,
-    setError,
-  ] = useState("");
+    processing,
+    setProcessing,
+  ] = useState(false);
+
+  /* =========================
+     CHECK BOOKMARK
+  ========================= */
 
   useEffect(() => {
-    if (
-      status ===
-      "loading"
-    ) {
-      return;
-    }
-
-    if (
-      status !==
-      "authenticated"
-    ) {
-      setChecking(false);
-      return;
-    }
-
     async function checkBookmark() {
+      if (
+        status ===
+        "loading"
+      ) {
+        return;
+      }
+
+      if (
+        status !==
+        "authenticated"
+      ) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const response =
           await fetch(
             `/api/bookmarks?itemType=${itemType}&itemId=${itemId}`,
             {
+              method: "GET",
+
               cache:
                 "no-store",
             }
           );
 
+        if (
+          !response.ok
+        ) {
+          setLoading(false);
+          return;
+        }
+
         const data =
           await response.json();
 
-        if (
-          response.ok &&
-          data.success
-        ) {
-          setSaved(
-            data.saved ===
-              true
-          );
+        setSaved(
+          data.saved ===
+            true
+        );
 
-          setBookmarkId(
-            data.bookmarkId ||
-              null
-          );
-        }
-      } catch (error) {
+        setBookmarkId(
+          data.bookmarkId ||
+            null
+        );
+      } catch (
+        error
+      ) {
         console.error(
           "Bookmark check error:",
           error
         );
       } finally {
-        setChecking(false);
+        setLoading(false);
       }
     }
 
@@ -118,21 +122,25 @@ export default function BookmarkButton({
     itemId,
   ]);
 
-  async function handleBookmark() {
-    setError("");
+  /* =========================
+     SAVE / REMOVE
+  ========================= */
 
-    /*
-     * Login required
-     */
+  async function handleBookmark() {
+    if (
+      processing
+    ) {
+      return;
+    }
+
+    /* LOGIN REQUIRED */
 
     if (
       status !==
-      "authenticated" ||
-      !session?.user
+      "authenticated"
     ) {
       const callbackUrl =
-        window.location
-          .pathname;
+        window.location.pathname;
 
       window.location.href =
         `/login?callbackUrl=${encodeURIComponent(
@@ -142,12 +150,12 @@ export default function BookmarkButton({
       return;
     }
 
-    setLoading(true);
+    setProcessing(true);
 
     try {
-      /*
-       * REMOVE
-       */
+      /* =========================
+         REMOVE BOOKMARK
+      ========================= */
 
       if (
         saved &&
@@ -184,9 +192,9 @@ export default function BookmarkButton({
         return;
       }
 
-      /*
-       * SAVE
-       */
+      /* =========================
+         SAVE BOOKMARK
+      ========================= */
 
       const response =
         await fetch(
@@ -201,10 +209,12 @@ export default function BookmarkButton({
             },
 
             body:
-              JSON.stringify({
-                itemType,
-                itemId,
-              }),
+              JSON.stringify(
+                {
+                  itemType,
+                  itemId,
+                }
+              ),
           }
         );
 
@@ -224,51 +234,98 @@ export default function BookmarkButton({
       setSaved(true);
 
       setBookmarkId(
-        data.bookmarkId
+        data.bookmarkId ||
+          null
       );
-    } catch (error) {
-      setError(
+    } catch (
+      error
+    ) {
+      console.error(
+        "Bookmark error:",
+        error
+      );
+
+      alert(
         error instanceof
           Error
           ? error.message
-          : "Unable to update bookmark"
+          : "Unable to update saved item"
       );
     } finally {
-      setLoading(false);
+      setProcessing(false);
     }
   }
 
-  return (
-    <div>
-      <button
-        type="button"
-        onClick={
-          handleBookmark
-        }
-        disabled={
-          loading ||
-          checking
-        }
-        className={`rounded-xl border px-5 py-3 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-          saved
-            ? "border-orange-500 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20"
-            : "border-slate-700 bg-slate-900 text-slate-300 hover:border-orange-500 hover:text-orange-400"
-        } ${className}`}
-      >
-        {checking
-          ? "Checking..."
-          : loading
-            ? "Please wait..."
-            : saved
-              ? "★ Saved"
-              : "☆ Save"}
-      </button>
+  /* =========================
+     BUTTON
+  ========================= */
 
-      {error && (
-        <p className="mt-2 text-sm text-red-400">
-          {error}
-        </p>
-      )}
-    </div>
+  return (
+    <button
+      type="button"
+      onClick={
+        handleBookmark
+      }
+      disabled={
+        loading ||
+        processing
+      }
+      className={`
+        inline-flex
+        items-center
+        justify-center
+        gap-2
+        rounded-xl
+        border
+        px-5
+        py-3
+        font-bold
+        transition
+        disabled:cursor-not-allowed
+        disabled:opacity-60
+
+        ${
+          saved
+            ? `
+              border-yellow-500/50
+              bg-yellow-500/10
+              text-yellow-400
+              hover:bg-yellow-500/20
+            `
+            : `
+              border-slate-700
+              bg-slate-900
+              text-slate-300
+              hover:border-orange-500
+              hover:text-orange-400
+            `
+        }
+
+        ${className}
+      `}
+    >
+      {/* STAR ICON */}
+
+      <span
+        className="text-xl leading-none"
+        aria-hidden="true"
+      >
+        {saved
+          ? "★"
+          : "☆"}
+      </span>
+
+      {/* TEXT */}
+
+      <span>
+        {loading
+          ? "Checking..."
+          : processing
+          ? "Please wait..."
+          : saved
+          ? "Saved"
+          : "Save"}
+      </span>
+    </button>
   );
 }

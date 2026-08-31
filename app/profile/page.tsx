@@ -14,6 +14,9 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 import SavedItemsManager from "@/components/profile/SavedItemsManager";
+import ReadingHistoryManager from "@/components/profile/ReadingHistoryManager";
+import ProfileEditor from "@/components/profile/ProfileEditor";
+import ChangePasswordForm from "@/components/profile/ChangePasswordForm";
 
 import {
   authOptions,
@@ -38,13 +41,17 @@ export const dynamic =
   "force-dynamic";
 
 /* =========================
-   PROFILE DATA
+   GET PROFILE DATA
 ========================= */
 
 async function getProfileData(
   email: string
 ) {
   await connectDB();
+
+  /* =========================
+     GET USER
+  ========================= */
 
   const user =
     await User.findOne({
@@ -62,6 +69,10 @@ async function getProfileData(
     return null;
   }
 
+  /* =========================
+     BLOCK CHECK
+  ========================= */
+
   const isBlocked =
     user.get(
       "isBlocked"
@@ -78,6 +89,10 @@ async function getProfileData(
       "_id"
     ) as mongoose.Types.ObjectId;
 
+  /* =========================
+     GET BOOKMARKS
+  ========================= */
+
   const bookmarks =
     await BookmarkModel.find({
       userId,
@@ -87,37 +102,41 @@ async function getProfileData(
       })
       .lean();
 
+  /* =========================
+     SAVED ARTICLE IDS
+  ========================= */
+
   const articleIds =
     bookmarks
       .filter(
-        (
-          bookmark
-        ) =>
+        (bookmark) =>
           bookmark.itemType ===
           "article"
       )
       .map(
-        (
-          bookmark
-        ) =>
+        (bookmark) =>
           bookmark.itemId
       );
+
+  /* =========================
+     SAVED BOOK IDS
+  ========================= */
 
   const bookIds =
     bookmarks
       .filter(
-        (
-          bookmark
-        ) =>
+        (bookmark) =>
           bookmark.itemType ===
           "book"
       )
       .map(
-        (
-          bookmark
-        ) =>
+        (bookmark) =>
           bookmark.itemId
       );
+
+  /* =========================
+     GET SAVED CONTENT
+  ========================= */
 
   const [
     articles,
@@ -153,45 +172,48 @@ async function getProfileData(
         .lean(),
     ]);
 
+  /* =========================
+     ARTICLE MAP
+  ========================= */
+
   const articleMap =
     new Map(
       articles.map(
-        (
-          article
-        ) => [
+        (article) => [
           String(
             article._id
           ),
+
           article,
         ]
       )
     );
 
+  /* =========================
+     BOOK MAP
+  ========================= */
+
   const bookMap =
     new Map(
       books.map(
-        (
-          book
-        ) => [
+        (book) => [
           String(
             book._id
           ),
+
           book,
         ]
       )
     );
 
-  /*
-   * Keep bookmarks in
-   * saved-date order.
-   */
+  /* =========================
+     BUILD SAVED ITEMS
+  ========================= */
 
   const savedItems =
     bookmarks
       .map(
-        (
-          bookmark
-        ) => {
+        (bookmark) => {
           const itemId =
             String(
               bookmark.itemId
@@ -228,11 +250,13 @@ async function getProfileData(
         }
       )
       .filter(
-        (
-          item
-        ) =>
+        (item) =>
           item !== null
       );
+
+  /* =========================
+     RETURN DATA
+  ========================= */
 
   return JSON.parse(
     JSON.stringify({
@@ -277,10 +301,18 @@ async function getProfileData(
 ========================= */
 
 export default async function ProfilePage() {
+  /* =========================
+     GET SESSION
+  ========================= */
+
   const session =
     await getServerSession(
       authOptions
     );
+
+  /* =========================
+     LOGIN REQUIRED
+  ========================= */
 
   if (
     !session?.user?.email
@@ -289,6 +321,10 @@ export default async function ProfilePage() {
       "/login?callbackUrl=/profile"
     );
   }
+
+  /* =========================
+     LOAD PROFILE
+  ========================= */
 
   const data =
     await getProfileData(
@@ -300,6 +336,10 @@ export default async function ProfilePage() {
       "/login"
     );
   }
+
+  /* =========================
+     BLOCKED ACCOUNT
+  ========================= */
 
   if (
     data.blocked ===
@@ -317,6 +357,10 @@ export default async function ProfilePage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
+      {/* =========================
+          NAVBAR
+      ========================= */}
+
       <Navbar />
 
       {/* =========================
@@ -325,12 +369,13 @@ export default async function ProfilePage() {
 
       <section className="border-b border-slate-800 px-6 py-12">
         <div className="mx-auto max-w-7xl">
-
           <div className="flex flex-col gap-7 md:flex-row md:items-center md:justify-between">
+
+            {/* USER */}
 
             <div className="flex items-center gap-5">
 
-              {/* AVATAR */}
+              {/* PROFILE IMAGE */}
 
               {user.image ? (
                 <img
@@ -353,6 +398,8 @@ export default async function ProfilePage() {
                 </div>
               )}
 
+              {/* USER INFO */}
+
               <div>
                 <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
                   My PetroHub
@@ -371,6 +418,8 @@ export default async function ProfilePage() {
                   }
                 </p>
 
+                {/* ROLE */}
+
                 <div className="mt-3">
                   <span
                     className={
@@ -388,9 +437,12 @@ export default async function ProfilePage() {
               </div>
             </div>
 
-            {/* HEADER ACTIONS */}
+            {/* =========================
+                HEADER ACTIONS
+            ========================= */}
 
             <div className="flex flex-wrap gap-3">
+
               <Link
                 href="/articles"
                 className="rounded-xl border border-slate-700 px-5 py-3 font-semibold text-slate-300 transition hover:border-orange-500 hover:text-orange-400"
@@ -426,6 +478,10 @@ export default async function ProfilePage() {
       <section className="px-6 py-12">
         <div className="mx-auto max-w-7xl">
 
+          {/* =========================
+              SAVED ITEMS
+          ========================= */}
+
           <SavedItemsManager
             initialBookmarks={
               bookmarks
@@ -433,10 +489,40 @@ export default async function ProfilePage() {
           />
 
           {/* =========================
+              READING HISTORY
+          ========================= */}
+
+          <ReadingHistoryManager />
+
+          {/* =========================
+              EDIT PROFILE
+          ========================= */}
+
+          <ProfileEditor
+            initialName={
+              user.name
+            }
+            email={
+              user.email
+            }
+            initialImage={
+              user.image ||
+              ""
+            }
+          />
+
+          {/* =========================
+              CHANGE PASSWORD
+          ========================= */}
+
+          <ChangePasswordForm />
+
+          {/* =========================
               QUICK ACTIONS
           ========================= */}
 
           <section className="mt-14 rounded-2xl border border-slate-800 bg-slate-900 p-6 md:p-8">
+
             <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
               Explore PetroHub
             </p>
@@ -449,7 +535,8 @@ export default async function ProfilePage() {
               Continue learning,
               discover engineering
               resources and manage
-              your saved collection.
+              your PetroHub
+              collection.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -485,6 +572,10 @@ export default async function ProfilePage() {
           </section>
         </div>
       </section>
+
+      {/* =========================
+          FOOTER
+      ========================= */}
 
       <Footer />
     </main>
