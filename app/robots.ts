@@ -1,35 +1,48 @@
 import type { MetadataRoute } from "next";
 
+const PRODUCTION_URL =
+  "https://petrohub-dlor.vercel.app";
+
+function getSiteUrl() {
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    (!configuredUrl ||
+      configuredUrl.includes("localhost") ||
+      configuredUrl.includes("127.0.0.1"))
+  ) {
+    return PRODUCTION_URL;
+  }
+
+  return (
+    configuredUrl ||
+    "http://localhost:3000"
+  ).replace(/\/+$/, "");
+}
+
 export default function robots(): MetadataRoute.Robots {
   const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    "http://localhost:3000";
+    getSiteUrl();
 
   return {
-    rules: [
-      {
-        userAgent: "*",
+    rules: {
+      userAgent: "*",
 
-        allow: [
-          "/",
-          "/articles/",
-          "/library/",
-          "/categories/",
-          "/about",
-          "/contact",
-        ],
+      allow: "/",
 
-        disallow: [
-          "/admin/",
-          "/api/",
-          "/login",
-          "/register",
-          "/profile",
-        ],
-      },
-    ],
+      disallow: [
+        "/admin/",
+        "/api/",
+        "/profile/",
+      ],
+    },
 
-    sitemap: `${siteUrl}/sitemap.xml`,
-    host: siteUrl,
+    sitemap:
+      `${siteUrl}/sitemap.xml`,
+
+    host:
+      siteUrl,
   };
 }
