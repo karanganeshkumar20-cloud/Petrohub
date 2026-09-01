@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import Navbar from "@/components/Navbar";
@@ -11,9 +12,9 @@ import { BookModel } from "@/models/Book";
 
 export const dynamic = "force-dynamic";
 
-/* =========================
+/* =========================================================
    TYPES
-========================= */
+========================================================= */
 
 type ArticleData = {
   _id: string;
@@ -24,7 +25,9 @@ type ArticleData = {
   featuredImage?: string;
   featured?: boolean;
   views?: number;
+  author?: string;
   createdAt?: string;
+  updatedAt?: string;
 };
 
 type LibraryResource = {
@@ -35,14 +38,14 @@ type LibraryResource = {
   description?: string;
   category: string;
 
-  contentType:
+  contentType?:
     | "book"
     | "manual"
     | "standard"
     | "note"
     | "download";
 
-  resourceType:
+  resourceType?:
     | "hosted"
     | "external";
 
@@ -57,73 +60,248 @@ type LibraryResource = {
   year?: number;
 
   createdAt?: string;
+  updatedAt?: string;
 };
 
-/* =========================
+/* =========================================================
+   SITE URL
+========================================================= */
+
+const PRODUCTION_URL =
+  "https://petrohub-dlor.vercel.app";
+
+function getSiteUrl() {
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    (
+      !configuredUrl ||
+      configuredUrl.includes("localhost") ||
+      configuredUrl.includes("127.0.0.1")
+    )
+  ) {
+    return PRODUCTION_URL;
+  }
+
+  return (
+    configuredUrl ||
+    "http://localhost:3000"
+  ).replace(/\/+$/, "");
+}
+
+/* =========================================================
+   SEO METADATA
+========================================================= */
+
+export const metadata: Metadata = {
+  /*
+   * Root layout already adds:
+   * "%s | PetroHub"
+   */
+
+  title:
+    "Engineering Knowledge Platform",
+
+  description:
+    "PetroHub is an engineering knowledge platform for Oil & Gas, HSE, Mechanical, Electrical, Instrumentation, Process, Civil and Geology professionals, students and engineers.",
+
+  keywords: [
+    "PetroHub",
+
+    "Engineering Knowledge",
+
+    "Engineering Articles",
+
+    "Engineering Resources",
+
+    "Engineering Library",
+
+    "Oil and Gas Engineering",
+
+    "Petroleum Engineering",
+
+    "HSE",
+
+    "Health and Safety",
+
+    "Mechanical Engineering",
+
+    "Electrical Engineering",
+
+    "Instrumentation Engineering",
+
+    "Process Engineering",
+
+    "Civil Engineering",
+
+    "Petroleum Geology",
+
+    "Technical Manuals",
+
+    "Engineering Books",
+  ],
+
+  alternates: {
+    canonical:
+      "/",
+  },
+
+  robots: {
+    index:
+      true,
+
+    follow:
+      true,
+
+    googleBot: {
+      index:
+        true,
+
+      follow:
+        true,
+
+      "max-image-preview":
+        "large",
+
+      "max-snippet":
+        -1,
+
+      "max-video-preview":
+        -1,
+    },
+  },
+
+  openGraph: {
+    type:
+      "website",
+
+    locale:
+      "en_US",
+
+    url:
+      "/",
+
+    siteName:
+      "PetroHub",
+
+    title:
+      "PetroHub | Engineering Knowledge Platform",
+
+    description:
+      "Practical engineering articles, technical resources and professional knowledge across Oil & Gas, HSE and multidisciplinary engineering.",
+  },
+
+  twitter: {
+    card:
+      "summary_large_image",
+
+    title:
+      "PetroHub | Engineering Knowledge Platform",
+
+    description:
+      "Explore engineering articles, technical resources and professional knowledge on PetroHub.",
+  },
+};
+
+/* =========================================================
    CATEGORIES
-========================= */
+========================================================= */
 
 const categories = [
   {
-    name: "HSE",
-    slug: "hse",
+    name:
+      "HSE",
+
+    slug:
+      "hse",
+
     description:
       "Safety, HIRA, PTW, LOTO, incident prevention and workplace risk management.",
   },
 
   {
-    name: "Oil & Gas",
-    slug: "oil-gas",
+    name:
+      "Oil & Gas",
+
+    slug:
+      "oil-gas",
+
     description:
       "Drilling, production, reservoir engineering and petroleum operations.",
   },
 
   {
-    name: "Mechanical",
-    slug: "mechanical",
+    name:
+      "Mechanical",
+
+    slug:
+      "mechanical",
+
     description:
       "Piping, rotating equipment, maintenance, corrosion and mechanical systems.",
   },
 
   {
-    name: "Electrical",
-    slug: "electrical",
+    name:
+      "Electrical",
+
+    slug:
+      "electrical",
+
     description:
       "Electrical safety, isolation, power systems and industrial equipment.",
   },
 
   {
-    name: "Instrumentation",
-    slug: "instrumentation",
+    name:
+      "Instrumentation",
+
+    slug:
+      "instrumentation",
+
     description:
       "Sensors, transmitters, calibration, measurement and industrial control.",
   },
 
   {
-    name: "Process",
-    slug: "process",
+    name:
+      "Process",
+
+    slug:
+      "process",
+
     description:
       "Process engineering, HAZOP, process safety and industrial operations.",
   },
 
   {
-    name: "Civil",
-    slug: "civil",
+    name:
+      "Civil",
+
+    slug:
+      "civil",
+
     description:
       "Construction, structural systems, site practices and civil engineering.",
   },
 
   {
-    name: "Geology",
-    slug: "geology",
+    name:
+      "Geology",
+
+    slug:
+      "geology",
+
     description:
       "Petroleum geology, reservoirs, formations and subsurface knowledge.",
   },
 ];
 
-/* =========================
+/* =========================================================
    DATABASE
-========================= */
+========================================================= */
 
 async function getHomepageData() {
   try {
@@ -137,63 +315,94 @@ async function getHomepageData() {
       resourceCount,
     ] = await Promise.all([
       Article.find({
-        status: "Published",
+        status:
+          "Published",
       })
+        .select(
+          "_id title slug summary category featuredImage featured views author createdAt updatedAt"
+        )
         .sort({
-          featured: -1,
-          createdAt: -1,
+          featured:
+            -1,
+
+          createdAt:
+            -1,
         })
         .limit(6)
         .lean(),
 
       BookModel.find({
-        status: "Published",
-        featured: true,
+        status:
+          "Published",
+
+        featured:
+          true,
       })
+        .select(
+          "_id title slug author description category contentType resourceType coverImage featured views downloads publisher year createdAt updatedAt"
+        )
         .sort({
-          createdAt: -1,
+          createdAt:
+            -1,
         })
         .limit(4)
         .lean(),
 
       BookModel.find({
-        status: "Published",
+        status:
+          "Published",
       })
+        .select(
+          "_id title slug author description category contentType resourceType coverImage featured views downloads publisher year createdAt updatedAt"
+        )
         .sort({
-          views: -1,
-          downloads: -1,
-          createdAt: -1,
+          views:
+            -1,
+
+          downloads:
+            -1,
+
+          createdAt:
+            -1,
         })
         .limit(4)
         .lean(),
 
       Article.countDocuments({
-        status: "Published",
+        status:
+          "Published",
       }),
 
       BookModel.countDocuments({
-        status: "Published",
+        status:
+          "Published",
       }),
     ]);
 
     return {
-      articles: JSON.parse(
-        JSON.stringify(articles)
-      ) as ArticleData[],
+      articles:
+        JSON.parse(
+          JSON.stringify(
+            articles
+          )
+        ) as ArticleData[],
 
-      featuredResources: JSON.parse(
-        JSON.stringify(
-          featuredResources
-        )
-      ) as LibraryResource[],
+      featuredResources:
+        JSON.parse(
+          JSON.stringify(
+            featuredResources
+          )
+        ) as LibraryResource[],
 
-      popularResources: JSON.parse(
-        JSON.stringify(
-          popularResources
-        )
-      ) as LibraryResource[],
+      popularResources:
+        JSON.parse(
+          JSON.stringify(
+            popularResources
+          )
+        ) as LibraryResource[],
 
       articleCount,
+
       resourceCount,
     };
   } catch (error) {
@@ -203,7 +412,8 @@ async function getHomepageData() {
     );
 
     return {
-      articles: [] as ArticleData[],
+      articles:
+        [] as ArticleData[],
 
       featuredResources:
         [] as LibraryResource[],
@@ -211,15 +421,18 @@ async function getHomepageData() {
       popularResources:
         [] as LibraryResource[],
 
-      articleCount: 0,
-      resourceCount: 0,
+      articleCount:
+        0,
+
+      resourceCount:
+        0,
     };
   }
 }
 
-/* =========================
+/* =========================================================
    HOMEPAGE
-========================= */
+========================================================= */
 
 export default async function HomePage() {
   const {
@@ -228,21 +441,268 @@ export default async function HomePage() {
     popularResources,
     articleCount,
     resourceCount,
-  } = await getHomepageData();
+  } =
+    await getHomepageData();
 
   const featuredArticle =
     articles.find(
       (article) =>
         article.featured
-    ) || articles[0];
+    ) ||
+    articles[0];
+
+  const siteUrl =
+    getSiteUrl();
+
+  /* =====================================================
+     STRUCTURED DATA
+  ===================================================== */
+
+  const structuredData = {
+    "@context":
+      "https://schema.org",
+
+    "@graph": [
+      /* ===============================
+         ORGANIZATION
+      =============================== */
+
+      {
+        "@type":
+          "Organization",
+
+        "@id":
+          `${siteUrl}/#organization`,
+
+        name:
+          "PetroHub",
+
+        url:
+          siteUrl,
+
+        description:
+          "PetroHub is an engineering knowledge platform providing practical articles, technical resources and professional learning content.",
+      },
+
+      /* ===============================
+         WEBSITE
+      =============================== */
+
+      {
+        "@type":
+          "WebSite",
+
+        "@id":
+          `${siteUrl}/#website`,
+
+        url:
+          siteUrl,
+
+        name:
+          "PetroHub",
+
+        description:
+          "Engineering knowledge platform for Oil & Gas, HSE and multidisciplinary engineering.",
+
+        publisher: {
+          "@id":
+            `${siteUrl}/#organization`,
+        },
+
+        inLanguage:
+          "en",
+
+        potentialAction: {
+          "@type":
+            "SearchAction",
+
+          target: {
+            "@type":
+              "EntryPoint",
+
+            urlTemplate:
+              `${siteUrl}/search?q={search_term_string}`,
+          },
+
+          "query-input":
+            "required name=search_term_string",
+        },
+      },
+
+      /* ===============================
+         HOMEPAGE
+      =============================== */
+
+      {
+        "@type":
+          "WebPage",
+
+        "@id":
+          `${siteUrl}/#webpage`,
+
+        url:
+          siteUrl,
+
+        name:
+          "PetroHub Engineering Knowledge Platform",
+
+        headline:
+          "Learn Engineering. Build Expertise.",
+
+        description:
+          "Explore practical engineering articles, professional manuals, technical references and industry resources across HSE, Oil & Gas and engineering disciplines.",
+
+        isPartOf: {
+          "@id":
+            `${siteUrl}/#website`,
+        },
+
+        about: {
+          "@id":
+            `${siteUrl}/#organization`,
+        },
+
+        inLanguage:
+          "en",
+      },
+
+      /* ===============================
+         ENGINEERING CATEGORIES
+      =============================== */
+
+      {
+        "@type":
+          "ItemList",
+
+        "@id":
+          `${siteUrl}/#engineering-categories`,
+
+        name:
+          "Engineering Categories",
+
+        numberOfItems:
+          categories.length,
+
+        itemListElement:
+          categories.map(
+            (
+              category,
+              index
+            ) => ({
+              "@type":
+                "ListItem",
+
+              position:
+                index + 1,
+
+              name:
+                category.name,
+
+              url:
+                `${siteUrl}/categories/${category.slug}`,
+            })
+          ),
+      },
+
+      /* ===============================
+         LATEST ARTICLES
+      =============================== */
+
+      {
+        "@type":
+          "ItemList",
+
+        "@id":
+          `${siteUrl}/#latest-articles`,
+
+        name:
+          "Latest Engineering Articles",
+
+        numberOfItems:
+          articles.length,
+
+        itemListElement:
+          articles.map(
+            (
+              article,
+              index
+            ) => ({
+              "@type":
+                "ListItem",
+
+              position:
+                index + 1,
+
+              name:
+                article.title,
+
+              url:
+                `${siteUrl}/articles/${article.slug}`,
+            })
+          ),
+      },
+
+      /* ===============================
+         FEATURED LIBRARY
+      =============================== */
+
+      {
+        "@type":
+          "ItemList",
+
+        "@id":
+          `${siteUrl}/#featured-library`,
+
+        name:
+          "Featured Engineering Resources",
+
+        numberOfItems:
+          featuredResources.length,
+
+        itemListElement:
+          featuredResources.map(
+            (
+              resource,
+              index
+            ) => ({
+              "@type":
+                "ListItem",
+
+              position:
+                index + 1,
+
+              name:
+                resource.title,
+
+              url:
+                `${siteUrl}/library/${resource.slug}`,
+            })
+          ),
+      },
+    ],
+  };
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <Navbar />
 
-      {/* =========================
+      {/* =================================================
+          STRUCTURED DATA
+      ================================================= */}
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html:
+            JSON.stringify(
+              structuredData
+            ),
+        }}
+      />
+
+      {/* =================================================
           HERO
-      ========================= */}
+      ================================================= */}
 
       <section className="relative overflow-hidden border-b border-slate-800 px-6 py-24 md:py-32">
         <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-transparent" />
@@ -255,18 +715,21 @@ export default async function HomePage() {
 
             <h1 className="mt-5 text-5xl font-extrabold leading-tight md:text-7xl">
               Learn Engineering.
+
               <span className="block text-orange-500">
                 Build Expertise.
               </span>
             </h1>
 
             <p className="mt-7 max-w-3xl text-lg leading-8 text-slate-400 md:text-xl">
-              Explore practical engineering
-              articles, professional manuals,
+              Explore practical
+              engineering articles,
+              professional manuals,
               technical references and
-              industry resources across HSE,
-              Oil & Gas, Mechanical,
-              Electrical and more.
+              industry resources across
+              HSE, Oil & Gas,
+              Mechanical, Electrical
+              and more.
             </p>
 
             {/* GLOBAL SEARCH */}
@@ -274,13 +737,23 @@ export default async function HomePage() {
             <form
               action="/search"
               method="GET"
+              role="search"
               className="mt-9 max-w-3xl"
             >
+              <label
+                htmlFor="homepage-search"
+                className="sr-only"
+              >
+                Search PetroHub
+              </label>
+
               <div className="flex flex-col gap-3 rounded-2xl border border-slate-700 bg-slate-900/80 p-3 shadow-2xl backdrop-blur sm:flex-row">
                 <input
+                  id="homepage-search"
                   type="search"
                   name="q"
                   required
+                  autoComplete="off"
                   placeholder="Search HIRA, OSHA, LOTO, drilling, reservoir..."
                   className="min-w-0 flex-1 rounded-xl bg-slate-950 px-5 py-4 text-white outline-none placeholder:text-slate-500 focus:ring-1 focus:ring-orange-500"
                 />
@@ -304,15 +777,21 @@ export default async function HomePage() {
                 "Fire Safety",
                 "Reservoir",
               ].map(
-                (keyword) => (
+                (
+                  keyword
+                ) => (
                   <Link
-                    key={keyword}
+                    key={
+                      keyword
+                    }
                     href={`/search?q=${encodeURIComponent(
                       keyword
                     )}`}
                     className="rounded-full border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-400 transition hover:border-orange-500 hover:text-orange-400"
                   >
-                    {keyword}
+                    {
+                      keyword
+                    }
                   </Link>
                 )
               )}
@@ -334,6 +813,13 @@ export default async function HomePage() {
               >
                 Engineering Library
               </Link>
+
+              <Link
+                href="/categories"
+                className="rounded-xl border border-slate-700 bg-slate-900/60 px-7 py-3.5 font-bold text-slate-200 transition hover:border-orange-500 hover:text-orange-400"
+              >
+                Browse Categories
+              </Link>
             </div>
           </div>
 
@@ -341,26 +827,32 @@ export default async function HomePage() {
 
           <div className="mt-14 grid max-w-3xl gap-4 sm:grid-cols-3">
             <HeroStat
-              value={articleCount}
+              value={
+                articleCount
+              }
               label="Published Articles"
             />
 
             <HeroStat
-              value={resourceCount}
+              value={
+                resourceCount
+              }
               label="Library Resources"
             />
 
             <HeroStat
-              value={categories.length}
+              value={
+                categories.length
+              }
               label="Engineering Disciplines"
             />
           </div>
         </div>
       </section>
 
-      {/* =========================
+      {/* =================================================
           FEATURED LIBRARY
-      ========================= */}
+      ================================================= */}
 
       {featuredResources.length >
         0 && (
@@ -376,7 +868,9 @@ export default async function HomePage() {
 
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {featuredResources.map(
-                (resource) => (
+                (
+                  resource
+                ) => (
                   <LibraryCard
                     key={
                       resource._id
@@ -392,9 +886,9 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* =========================
+      {/* =================================================
           FEATURED ARTICLE
-      ========================= */}
+      ================================================= */}
 
       {featuredArticle && (
         <section className="border-b border-slate-800 px-6 py-16">
@@ -471,9 +965,9 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* =========================
+      {/* =================================================
           CATEGORIES
-      ========================= */}
+      ================================================= */}
 
       <section className="border-b border-slate-800 px-6 py-16">
         <div className="mx-auto max-w-7xl">
@@ -487,7 +981,9 @@ export default async function HomePage() {
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {categories.map(
-              (category) => (
+              (
+                category
+              ) => (
                 <Link
                   key={
                     category.slug
@@ -514,7 +1010,7 @@ export default async function HomePage() {
                   </p>
 
                   <p className="mt-5 text-sm font-semibold text-orange-400">
-                    Explore category
+                    Explore category →
                   </p>
                 </Link>
               )
@@ -523,9 +1019,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* =========================
+      {/* =================================================
           LATEST ARTICLES
-      ========================= */}
+      ================================================= */}
 
       <section className="border-b border-slate-800 px-6 py-16">
         <div className="mx-auto max-w-7xl">
@@ -537,7 +1033,8 @@ export default async function HomePage() {
             linkLabel="Browse all articles →"
           />
 
-          {articles.length === 0 ? (
+          {articles.length ===
+          0 ? (
             <EmptyState
               title="No articles available"
               description="Published articles will appear here automatically."
@@ -545,7 +1042,9 @@ export default async function HomePage() {
           ) : (
             <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {articles.map(
-                (article) => (
+                (
+                  article
+                ) => (
                   <ArticleCard
                     key={
                       article._id
@@ -561,9 +1060,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* =========================
+      {/* =================================================
           POPULAR RESOURCES
-      ========================= */}
+      ================================================= */}
 
       {popularResources.length >
         0 && (
@@ -579,7 +1078,9 @@ export default async function HomePage() {
 
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {popularResources.map(
-                (resource) => (
+                (
+                  resource
+                ) => (
                   <LibraryCard
                     key={
                       resource._id
@@ -596,9 +1097,9 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* =========================
+      {/* =================================================
           KNOWLEDGE PLATFORM CTA
-      ========================= */}
+      ================================================= */}
 
       <section className="px-6 py-20">
         <div className="mx-auto max-w-7xl">
@@ -637,6 +1138,13 @@ export default async function HomePage() {
                 </Link>
 
                 <Link
+                  href="/articles"
+                  className="rounded-xl border border-slate-700 px-7 py-3.5 text-center font-bold text-slate-300 transition hover:border-orange-500 hover:text-orange-400"
+                >
+                  Read Articles
+                </Link>
+
+                <Link
                   href="/search"
                   className="rounded-xl border border-slate-700 px-7 py-3.5 text-center font-bold text-slate-300 transition hover:border-orange-500 hover:text-orange-400"
                 >
@@ -653,16 +1161,19 @@ export default async function HomePage() {
   );
 }
 
-/* =========================
+/* =========================================================
    LIBRARY CARD
-========================= */
+========================================================= */
 
 function LibraryCard({
   resource,
   showStats = false,
 }: {
-  resource: LibraryResource;
-  showStats?: boolean;
+  resource:
+    LibraryResource;
+
+  showStats?:
+    boolean;
 }) {
   return (
     <Link
@@ -678,6 +1189,7 @@ function LibraryCard({
             alt={
               resource.title
             }
+            loading="lazy"
             className="aspect-[3/4] w-full object-cover transition duration-300 group-hover:scale-[1.03]"
           />
         ) : (
@@ -702,7 +1214,9 @@ function LibraryCard({
       <div className="p-5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-orange-400">
-            {resource.category}
+            {
+              resource.category
+            }
           </span>
 
           <span className="text-xs text-slate-600">
@@ -713,22 +1227,30 @@ function LibraryCard({
             {resource.resourceType ===
             "hosted"
               ? "Hosted PDF"
-              : "Official Source"}
+              : resource.resourceType ===
+                  "external"
+                ? "Official Source"
+                : "Library Resource"}
           </span>
         </div>
 
         <h3 className="mt-3 line-clamp-2 text-lg font-bold leading-6 transition group-hover:text-orange-400">
-          {resource.title}
+          {
+            resource.title
+          }
         </h3>
 
         {resource.author && (
           <p className="mt-2 line-clamp-1 text-sm text-slate-500">
-            By {resource.author}
+            By{" "}
+            {
+              resource.author
+            }
           </p>
         )}
 
         {showStats && (
-          <div className="mt-5 flex gap-4 border-t border-slate-800 pt-4 text-xs text-slate-500">
+          <div className="mt-5 flex flex-wrap gap-4 border-t border-slate-800 pt-4 text-xs text-slate-500">
             <span>
               {resource.views ??
                 0}{" "}
@@ -751,9 +1273,9 @@ function LibraryCard({
   );
 }
 
-/* =========================
+/* =========================================================
    SECTION HEADER
-========================= */
+========================================================= */
 
 function SectionHeader({
   eyebrow,
@@ -762,94 +1284,130 @@ function SectionHeader({
   href,
   linkLabel,
 }: {
-  eyebrow: string;
-  title: string;
-  description: string;
-  href: string;
-  linkLabel: string;
+  eyebrow:
+    string;
+
+  title:
+    string;
+
+  description:
+    string;
+
+  href:
+    string;
+
+  linkLabel:
+    string;
 }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-5">
       <div>
         <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
-          {eyebrow}
+          {
+            eyebrow
+          }
         </p>
 
         <h2 className="mt-3 text-3xl font-bold">
-          {title}
+          {
+            title
+          }
         </h2>
 
         <p className="mt-3 max-w-2xl leading-7 text-slate-400">
-          {description}
+          {
+            description
+          }
         </p>
       </div>
 
       <Link
-        href={href}
+        href={
+          href
+        }
         className="font-semibold text-orange-400 transition hover:text-orange-300"
       >
-        {linkLabel}
+        {
+          linkLabel
+        }
       </Link>
     </div>
   );
 }
 
-/* =========================
+/* =========================================================
    HERO STAT
-========================= */
+========================================================= */
 
 function HeroStat({
   value,
   label,
 }: {
-  value: number;
-  label: string;
+  value:
+    number;
+
+  label:
+    string;
 }) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
       <p className="text-3xl font-extrabold text-white">
-        {value}
+        {
+          value
+        }
       </p>
 
       <p className="mt-2 text-sm text-slate-500">
-        {label}
+        {
+          label
+        }
       </p>
     </div>
   );
 }
 
-/* =========================
+/* =========================================================
    EMPTY STATE
-========================= */
+========================================================= */
 
 function EmptyState({
   title,
   description,
 }: {
-  title: string;
-  description: string;
+  title:
+    string;
+
+  description:
+    string;
 }) {
   return (
     <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-10">
       <h3 className="text-xl font-bold">
-        {title}
+        {
+          title
+        }
       </h3>
 
       <p className="mt-3 text-slate-400">
-        {description}
+        {
+          description
+        }
       </p>
     </div>
   );
 }
 
-/* =========================
+/* =========================================================
    CONTENT TYPE LABEL
-========================= */
+========================================================= */
 
 function getContentTypeLabel(
-  contentType?: string
+  contentType?:
+    string
 ) {
-  switch (contentType) {
+  switch (
+    contentType
+  ) {
     case "manual":
       return "Manual";
 
