@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import {
+  useEffect,
+} from "react";
+
+type ArticleViewTrackerProps =
+  {
+    articleId: string;
+  };
 
 export default function ArticleViewTracker({
   articleId,
-}: {
-  articleId: string;
-}) {
+}: ArticleViewTrackerProps) {
   useEffect(() => {
     if (!articleId) {
       return;
@@ -16,69 +21,108 @@ export default function ArticleViewTracker({
       `petrohub-article-view-${articleId}`;
 
     /*
-     * Same browser tab/session-la
-     * same article repeated mount
-     * aana duplicate view count
-     * prevent pannum.
-     */
-    const alreadyTracked =
+      Prevent repeated client
+      increments during the same
+      browser tab session.
+    */
+
+    if (
       sessionStorage.getItem(
         storageKey
-      );
-
-    if (alreadyTracked) {
+      )
+    ) {
       return;
     }
 
-    /*
-     * Request start aagurathukku
-     * munnadi mark pannuvom.
-     * React Strict Mode duplicate
-     * effect-ai idhu stop pannum.
-     */
     sessionStorage.setItem(
       storageKey,
       "1"
     );
 
-    async function increaseView() {
+    async function trackView() {
       try {
-        const response =
+        /* =====================
+           PUBLIC VIEW COUNTER
+        ===================== */
+
+        const viewResponse =
           await fetch(
             `/api/articles/${articleId}/view`,
             {
-              method: "POST",
-              cache: "no-store",
+              method:
+                "POST",
+
+              cache:
+                "no-store",
             }
           );
 
-        /*
-         * Server request fail aana
-         * next attempt-ku allow pannuvom.
-         */
-        if (!response.ok) {
-          sessionStorage.removeItem(
-            storageKey
+        if (
+          !viewResponse.ok
+        ) {
+          throw new Error(
+            "Unable to update article view"
           );
+        }
 
+        /* =====================
+           ANALYTICS EVENT
+        ===================== */
+
+        try {
+          await fetch(
+            "/api/analytics/track",
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify(
+                  {
+                    itemType:
+                      "article",
+
+                    itemId:
+                      articleId,
+                  }
+                ),
+
+              cache:
+                "no-store",
+            }
+          );
+        } catch (
+          analyticsError
+        ) {
           console.error(
-            "Unable to update article views:",
-            response.status
+            "Article analytics error:",
+            analyticsError
           );
         }
       } catch (error) {
+        /*
+          Allow retry if the
+          actual public view
+          counter failed.
+        */
+
         sessionStorage.removeItem(
           storageKey
         );
 
         console.error(
-          "Unable to update article views:",
+          "Article view error:",
           error
         );
       }
     }
 
-    increaseView();
+    trackView();
   }, [articleId]);
 
   return null;

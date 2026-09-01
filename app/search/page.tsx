@@ -11,18 +11,17 @@ export default async function SearchPage({
 }: SearchPageProps) {
   const params = await searchParams;
 
-  const rawQuery = params.q;
+  let query = "";
 
-  const initialQuery =
-    typeof rawQuery === "string"
-      ? rawQuery
-      : Array.isArray(rawQuery)
-      ? rawQuery[0] || ""
-      : "";
+  if (typeof params.q === "string") {
+    query = params.q;
+  } else if (Array.isArray(params.q)) {
+    query = params.q[0] || "";
+  }
 
   return (
     <SearchClient
-      initialQuery={initialQuery}
+      initialQuery={query}
     />
   );
 }

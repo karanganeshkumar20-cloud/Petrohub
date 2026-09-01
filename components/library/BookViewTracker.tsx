@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import {
+  useEffect,
+} from "react";
+
+type BookViewTrackerProps =
+  {
+    bookId: string;
+  };
 
 export default function BookViewTracker({
   bookId,
-}: {
-  bookId: string;
-}) {
+}: BookViewTrackerProps) {
   useEffect(() => {
     if (!bookId) {
       return;
@@ -15,12 +20,17 @@ export default function BookViewTracker({
     const storageKey =
       `petrohub-book-view-${bookId}`;
 
-    const alreadyTracked =
+    /*
+      Prevent repeated client
+      increments during the same
+      browser tab session.
+    */
+
+    if (
       sessionStorage.getItem(
         storageKey
-      );
-
-    if (alreadyTracked) {
+      )
+    ) {
       return;
     }
 
@@ -29,25 +39,69 @@ export default function BookViewTracker({
       "1"
     );
 
-    async function increaseView() {
+    async function trackView() {
       try {
-        const response =
+        /* =====================
+           PUBLIC VIEW COUNTER
+        ===================== */
+
+        const viewResponse =
           await fetch(
             `/api/books/${bookId}/view`,
             {
-              method: "POST",
-              cache: "no-store",
+              method:
+                "POST",
+
+              cache:
+                "no-store",
             }
           );
 
-        if (!response.ok) {
-          sessionStorage.removeItem(
-            storageKey
+        if (
+          !viewResponse.ok
+        ) {
+          throw new Error(
+            "Unable to update resource view"
           );
+        }
 
+        /* =====================
+           ANALYTICS EVENT
+        ===================== */
+
+        try {
+          await fetch(
+            "/api/analytics/track",
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body:
+                JSON.stringify(
+                  {
+                    itemType:
+                      "book",
+
+                    itemId:
+                      bookId,
+                  }
+                ),
+
+              cache:
+                "no-store",
+            }
+          );
+        } catch (
+          analyticsError
+        ) {
           console.error(
-            "Unable to update book views:",
-            response.status
+            "Book analytics error:",
+            analyticsError
           );
         }
       } catch (error) {
@@ -56,13 +110,13 @@ export default function BookViewTracker({
         );
 
         console.error(
-          "Unable to update book views:",
+          "Book view error:",
           error
         );
       }
     }
 
-    increaseView();
+    trackView();
   }, [bookId]);
 
   return null;

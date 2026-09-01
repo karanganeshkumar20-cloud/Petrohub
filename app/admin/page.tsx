@@ -7,17 +7,12 @@ import { connectDB } from "@/lib/mongodb";
 
 import Article from "@/models/Article";
 import User from "@/models/User";
-import { BookModel } from "@/models/Book";
-
-import {
-  ContactMessageModel,
-} from "@/models/ContactMessage";
 
 export const dynamic = "force-dynamic";
 
-/* =========================
+/* =========================================================
    DASHBOARD DATA
-========================= */
+========================================================= */
 
 async function getDashboardData() {
   await connectDB();
@@ -28,12 +23,7 @@ async function getDashboardData() {
     draftArticles,
     featuredArticles,
     totalUsers,
-    totalResources,
-    totalMessages,
-    unreadMessages,
     recentArticles,
-    recentMessages,
-    totalViewsResult,
   ] = await Promise.all([
     Article.countDocuments(),
 
@@ -51,46 +41,40 @@ async function getDashboardData() {
 
     User.countDocuments(),
 
-    BookModel.countDocuments({
-      status: "Published",
-    }),
-
-    ContactMessageModel.countDocuments(),
-
-    ContactMessageModel.countDocuments({
-      status: "Unread",
-    }),
-
     Article.find()
       .sort({
         createdAt: -1,
       })
       .limit(5)
       .lean(),
+  ]);
 
-    ContactMessageModel.find()
-      .sort({
-        createdAt: -1,
-      })
-      .limit(5)
-      .lean(),
+  /* =========================
+     TOTAL ARTICLE VIEWS
+  ========================= */
 
-    Article.aggregate([
+  const totalViewsResult =
+    await Article.aggregate([
       {
         $group: {
           _id: null,
 
           totalViews: {
-            $sum: "$views",
+            $sum: {
+              $ifNull: [
+                "$views",
+                0,
+              ],
+            },
           },
         },
       },
-    ]),
-  ]);
+    ]);
 
   const totalViews =
     totalViewsResult.length > 0
-      ? totalViewsResult[0].totalViews
+      ? totalViewsResult[0]
+          .totalViews
       : 0;
 
   return {
@@ -99,28 +83,20 @@ async function getDashboardData() {
     draftArticles,
     featuredArticles,
     totalUsers,
-    totalResources,
-    totalMessages,
-    unreadMessages,
     totalViews,
 
-    recentArticles: JSON.parse(
-      JSON.stringify(
-        recentArticles
-      )
-    ),
-
-    recentMessages: JSON.parse(
-      JSON.stringify(
-        recentMessages
-      )
-    ),
+    recentArticles:
+      JSON.parse(
+        JSON.stringify(
+          recentArticles
+        )
+      ),
   };
 }
 
-/* =========================
-   ADMIN DASHBOARD
-========================= */
+/* =========================================================
+   PAGE
+========================================================= */
 
 export default async function AdminDashboardPage() {
   const {
@@ -129,22 +105,24 @@ export default async function AdminDashboardPage() {
     draftArticles,
     featuredArticles,
     totalUsers,
-    totalResources,
-    totalMessages,
-    unreadMessages,
     totalViews,
     recentArticles,
-    recentMessages,
-  } = await getDashboardData();
+  } =
+    await getDashboardData();
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <Navbar />
 
+      {/* =====================================================
+          DASHBOARD
+      ===================================================== */}
+
       <section className="px-6 py-12">
         <div className="mx-auto max-w-7xl">
-
-          {/* HEADER */}
+          {/* =========================
+              HEADER
+          ========================= */}
 
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
@@ -156,20 +134,20 @@ export default async function AdminDashboardPage() {
                 Admin Dashboard
               </h1>
 
-              <p className="mt-3 max-w-3xl text-slate-400">
-                Manage PetroHub articles,
-                library resources, users,
-                contact messages and
-                platform activity.
+              <p className="mt-3 max-w-2xl text-slate-400">
+                Manage PetroHub
+                content, users,
+                resources and platform
+                activity.
               </p>
             </div>
 
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/admin/books/new"
-                className="rounded-xl border border-slate-700 px-5 py-3 text-center font-bold text-slate-300 transition hover:border-orange-500 hover:text-orange-400"
+                href="/admin/analytics"
+                className="rounded-xl border border-slate-700 bg-slate-900 px-5 py-3 text-center font-bold text-white transition hover:border-orange-500 hover:text-orange-400"
               >
-                + New Resource
+                📊 Analytics
               </Link>
 
               <Link
@@ -181,59 +159,53 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* STATS */}
+          {/* =========================
+              STATS
+          ========================= */}
 
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <DashboardStat
               title="Total Articles"
-              value={totalArticles}
+              value={
+                totalArticles
+              }
             />
 
             <DashboardStat
               title="Published"
-              value={publishedArticles}
+              value={
+                publishedArticles
+              }
             />
 
             <DashboardStat
-              title="Draft Articles"
-              value={draftArticles}
+              title="Drafts"
+              value={
+                draftArticles
+              }
             />
 
             <DashboardStat
-              title="Featured Articles"
-              value={featuredArticles}
+              title="Featured"
+              value={
+                featuredArticles
+              }
             />
 
             <DashboardStat
-              title="Article Views"
+              title="Total Views"
               value={totalViews}
-            />
-
-            <DashboardStat
-              title="Library Resources"
-              value={totalResources}
             />
 
             <DashboardStat
               title="Users"
               value={totalUsers}
             />
-
-            <DashboardStat
-              title="Messages"
-              value={totalMessages}
-              subtitle={
-                unreadMessages > 0
-                  ? `${unreadMessages} unread`
-                  : "No unread messages"
-              }
-              highlight={
-                unreadMessages > 0
-              }
-            />
           </div>
 
-          {/* QUICK ACTIONS */}
+          {/* =====================================================
+              QUICK ACTIONS
+          ===================================================== */}
 
           <section className="mt-12">
             <div>
@@ -244,175 +216,157 @@ export default async function AdminDashboardPage() {
               <h2 className="mt-2 text-2xl font-bold">
                 Quick Actions
               </h2>
+
+              <p className="mt-2 text-sm text-slate-400">
+                Access PetroHub
+                management tools from
+                one place.
+              </p>
             </div>
 
-            <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {/* ANALYTICS */}
+
+              <DashboardLink
+                href="/admin/analytics"
+                icon="📊"
+                title="Platform Analytics"
+                description="Monitor users, views, downloads, bookmarks and top-performing content."
+              />
+
+              {/* CREATE ARTICLE */}
 
               <DashboardLink
                 href="/admin/articles/new"
+                icon="✍️"
                 title="Create Article"
                 description="Write and publish a new engineering article."
               />
 
+              {/* ARTICLES */}
+
               <DashboardLink
                 href="/admin/articles"
+                icon="📝"
                 title="Manage Articles"
-                description="Edit, delete and manage PetroHub articles."
+                description="Edit, publish, feature or delete PetroHub articles."
               />
+
+              {/* LIBRARY */}
 
               <DashboardLink
                 href="/admin/books"
+                icon="📚"
                 title="Manage Library"
-                description="Create and manage books, manuals, PDFs and official resources."
+                description="Add and manage engineering books, PDFs and learning resources."
               />
+
+              {/* USERS */}
 
               <DashboardLink
                 href="/admin/users"
+                icon="👥"
                 title="Manage Users"
-                description={`Review ${totalUsers} registered users and manage PetroHub account roles.`}
+                description="View registered users and manage account access."
               />
+
+              {/* CONTACT MESSAGES */}
 
               <DashboardLink
                 href="/admin/messages"
-                title={
-                  unreadMessages > 0
-                    ? `Contact Messages (${unreadMessages})`
-                    : "Contact Messages"
-                }
-                description="Read and manage enquiries submitted through the PetroHub contact form."
-                highlight={
-                  unreadMessages > 0
-                }
+                icon="✉️"
+                title="Contact Inbox"
+                description="Review and manage messages received from PetroHub visitors."
               />
 
-              <DashboardLink
-                href="/search"
-                title="Test Search"
-                description="Test global search across PetroHub articles and library resources."
-              />
+              {/* PUBLIC WEBSITE */}
 
               <DashboardLink
                 href="/"
+                icon="🌐"
                 title="View Website"
-                description="Open the public PetroHub website."
+                description="Open the public PetroHub website and review published content."
+              />
+
+              {/* SEARCH */}
+
+              <DashboardLink
+                href="/search"
+                icon="🔎"
+                title="Test Search"
+                description="Test PetroHub search and verify published content appears correctly."
               />
             </div>
           </section>
 
-          {/* RECENT CONTACT MESSAGES */}
+          {/* =====================================================
+              ANALYTICS FEATURE CARD
+          ===================================================== */}
+
+          <section className="mt-14">
+            <div className="relative overflow-hidden rounded-3xl border border-orange-500/30 bg-gradient-to-br from-slate-900 via-slate-900 to-orange-950/30 p-7 md:p-9">
+              <div className="absolute right-6 top-6 text-7xl opacity-10">
+                📊
+              </div>
+
+              <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
+                    PetroHub Analytics
+                  </p>
+
+                  <h2 className="mt-3 text-3xl font-bold">
+                    Understand how
+                    PetroHub is growing
+                  </h2>
+
+                  <p className="mt-4 max-w-2xl leading-7 text-slate-400">
+                    Track users,
+                    articles, library
+                    resources, views,
+                    downloads,
+                    bookmarks and
+                    engagement from the
+                    analytics dashboard.
+                  </p>
+
+                  <div className="mt-6 flex flex-wrap gap-3 text-sm text-slate-300">
+                    <AnalyticsBadge>
+                      👥 Users
+                    </AnalyticsBadge>
+
+                    <AnalyticsBadge>
+                      👁 Views
+                    </AnalyticsBadge>
+
+                    <AnalyticsBadge>
+                      ⭐ Bookmarks
+                    </AnalyticsBadge>
+
+                    <AnalyticsBadge>
+                      ⬇ Downloads
+                    </AnalyticsBadge>
+                  </div>
+                </div>
+
+                <div className="shrink-0">
+                  <Link
+                    href="/admin/analytics"
+                    className="inline-flex items-center justify-center rounded-xl bg-orange-500 px-6 py-3 font-bold text-white transition hover:bg-orange-600"
+                  >
+                    View Analytics →
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* =====================================================
+              RECENT ARTICLES
+          ===================================================== */}
 
           <section className="mt-14">
             <div className="flex flex-wrap items-end justify-between gap-5">
-              <div>
-                <p className="font-semibold uppercase tracking-widest text-orange-500">
-                  Inbox
-                </p>
-
-                <h2 className="mt-2 text-2xl font-bold">
-                  Recent Contact Messages
-                </h2>
-              </div>
-
-              <Link
-                href="/admin/messages"
-                className="text-sm font-semibold text-orange-400 hover:text-orange-300"
-              >
-                View all messages →
-              </Link>
-            </div>
-
-            {recentMessages.length === 0 ? (
-              <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-8 text-slate-400">
-                No contact messages
-                received yet.
-              </div>
-            ) : (
-              <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full">
-                    <thead className="border-b border-slate-800">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">
-                          Sender
-                        </th>
-
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">
-                          Subject
-                        </th>
-
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">
-                          Status
-                        </th>
-
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">
-                          Received
-                        </th>
-
-                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {recentMessages.map(
-                        (message: any) => (
-                          <tr
-                            key={message._id}
-                            className="border-b border-slate-800 last:border-b-0"
-                          >
-                            <td className="px-6 py-5">
-                              <p className="font-semibold">
-                                {message.name}
-                              </p>
-
-                              <p className="mt-1 text-xs text-slate-500">
-                                {message.email}
-                              </p>
-                            </td>
-
-                            <td className="max-w-xs px-6 py-5">
-                              <p className="truncate text-slate-300">
-                                {message.subject}
-                              </p>
-                            </td>
-
-                            <td className="px-6 py-5">
-                              <MessageStatus
-                                status={
-                                  message.status
-                                }
-                              />
-                            </td>
-
-                            <td className="px-6 py-5 text-sm text-slate-500">
-                              {formatDate(
-                                message.createdAt
-                              )}
-                            </td>
-
-                            <td className="px-6 py-5">
-                              <Link
-                                href="/admin/messages"
-                                className="font-semibold text-orange-400 hover:text-orange-300"
-                              >
-                                Open
-                              </Link>
-                            </td>
-                          </tr>
-                        )
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </section>
-
-          {/* RECENT ARTICLES */}
-
-          <section className="mt-14">
-            <div className="flex items-end justify-between gap-5">
               <div>
                 <p className="font-semibold uppercase tracking-widest text-orange-500">
                   Content
@@ -421,25 +375,40 @@ export default async function AdminDashboardPage() {
                 <h2 className="mt-2 text-2xl font-bold">
                   Recent Articles
                 </h2>
+
+                <p className="mt-2 text-sm text-slate-400">
+                  Recently created
+                  PetroHub articles.
+                </p>
               </div>
 
               <Link
                 href="/admin/articles"
-                className="text-sm font-semibold text-orange-400 hover:text-orange-300"
+                className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
               >
                 Manage all →
               </Link>
             </div>
 
-            {recentArticles.length === 0 ? (
+            {/* =========================
+                EMPTY STATE
+            ========================= */}
+
+            {recentArticles.length ===
+            0 ? (
               <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-8 text-slate-400">
-                No articles available yet.
+                No articles available
+                yet.
               </div>
             ) : (
+              /* =========================
+                 TABLE
+              ========================= */
+
               <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
                 <div className="overflow-x-auto">
                   <table className="min-w-full">
-                    <thead className="border-b border-slate-800">
+                    <thead className="border-b border-slate-800 bg-slate-900/80">
                       <tr>
                         <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">
                           Article
@@ -465,13 +434,19 @@ export default async function AdminDashboardPage() {
 
                     <tbody>
                       {recentArticles.map(
-                        (article: any) => (
+                        (
+                          article: any
+                        ) => (
                           <tr
-                            key={article._id}
-                            className="border-b border-slate-800 last:border-b-0"
+                            key={
+                              article._id
+                            }
+                            className="border-b border-slate-800 transition last:border-b-0 hover:bg-slate-800/30"
                           >
+                            {/* ARTICLE */}
+
                             <td className="px-6 py-5">
-                              <div className="flex items-center gap-4">
+                              <div className="flex min-w-[260px] items-center gap-4">
                                 {article.featuredImage ? (
                                   <img
                                     src={
@@ -483,26 +458,37 @@ export default async function AdminDashboardPage() {
                                     className="h-12 w-20 rounded-lg object-cover"
                                   />
                                 ) : (
-                                  <div className="h-12 w-20 rounded-lg bg-slate-800" />
+                                  <div className="flex h-12 w-20 items-center justify-center rounded-lg bg-slate-800 text-lg">
+                                    📝
+                                  </div>
                                 )}
 
                                 <div>
-                                  <p className="font-semibold">
-                                    {article.title}
+                                  <p className="font-semibold text-white">
+                                    {
+                                      article.title
+                                    }
                                   </p>
 
                                   <p className="mt-1 text-xs text-slate-500">
-                                    {formatDate(
-                                      article.createdAt
-                                    )}
+                                    {article.createdAt
+                                      ? new Date(
+                                          article.createdAt
+                                        ).toLocaleDateString()
+                                      : "-"}
                                   </p>
                                 </div>
                               </div>
                             </td>
 
+                            {/* CATEGORY */}
+
                             <td className="px-6 py-5 text-slate-300">
-                              {article.category}
+                              {article.category ||
+                                "-"}
                             </td>
+
+                            {/* STATUS */}
 
                             <td className="px-6 py-5">
                               <span
@@ -517,17 +503,37 @@ export default async function AdminDashboardPage() {
                               </span>
                             </td>
 
+                            {/* VIEWS */}
+
                             <td className="px-6 py-5 text-slate-300">
-                              {article.views ?? 0}
+                              {Number(
+                                article.views ??
+                                  0
+                              ).toLocaleString()}
                             </td>
 
+                            {/* ACTIONS */}
+
                             <td className="px-6 py-5">
-                              <Link
-                                href={`/admin/articles/edit/${article._id}`}
-                                className="font-semibold text-orange-400 hover:text-orange-300"
-                              >
-                                Edit
-                              </Link>
+                              <div className="flex items-center gap-4">
+                                <Link
+                                  href={`/admin/articles/edit/${article._id}`}
+                                  className="font-semibold text-orange-400 transition hover:text-orange-300"
+                                >
+                                  Edit
+                                </Link>
+
+                                {article.slug &&
+                                  article.status ===
+                                    "Published" && (
+                                    <Link
+                                      href={`/articles/${article.slug}`}
+                                      className="font-semibold text-slate-400 transition hover:text-white"
+                                    >
+                                      View
+                                    </Link>
+                                  )}
+                              </div>
                             </td>
                           </tr>
                         )
@@ -546,85 +552,67 @@ export default async function AdminDashboardPage() {
   );
 }
 
-/* =========================
+/* =========================================================
    DASHBOARD STAT
-========================= */
+========================================================= */
 
 function DashboardStat({
   title,
   value,
-  subtitle,
-  highlight = false,
 }: {
   title: string;
   value: number;
-  subtitle?: string;
-  highlight?: boolean;
 }) {
   return (
-    <div
-      className={
-        highlight
-          ? "rounded-2xl border border-orange-500/50 bg-orange-500/10 p-5"
-          : "rounded-2xl border border-slate-800 bg-slate-900 p-5"
-      }
-    >
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-slate-700">
       <p className="text-sm font-medium text-slate-500">
         {title}
       </p>
 
-      <p className="mt-3 text-3xl font-bold">
-        {value.toLocaleString()}
+      <p className="mt-3 text-3xl font-bold text-white">
+        {Number(
+          value || 0
+        ).toLocaleString()}
       </p>
-
-      {subtitle && (
-        <p
-          className={
-            highlight
-              ? "mt-2 text-xs font-semibold text-orange-400"
-              : "mt-2 text-xs text-slate-500"
-          }
-        >
-          {subtitle}
-        </p>
-      )}
     </div>
   );
 }
 
-/* =========================
-   QUICK ACTION
-========================= */
+/* =========================================================
+   DASHBOARD LINK
+========================================================= */
 
 function DashboardLink({
   href,
   title,
   description,
-  highlight = false,
+  icon,
 }: {
   href: string;
   title: string;
   description: string;
-  highlight?: boolean;
+  icon: string;
 }) {
   return (
     <Link
       href={href}
-      className={
-        highlight
-          ? "group rounded-2xl border border-orange-500/50 bg-orange-500/10 p-6 transition hover:-translate-y-1 hover:border-orange-400"
-          : "group rounded-2xl border border-slate-800 bg-slate-900 p-6 transition hover:-translate-y-1 hover:border-orange-500/50"
-      }
+      className="group rounded-2xl border border-slate-800 bg-slate-900 p-6 transition duration-200 hover:-translate-y-1 hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-950/10"
     >
-      <h3
-        className={
-          highlight
-            ? "text-xl font-bold text-orange-400"
-            : "text-xl font-bold transition group-hover:text-orange-400"
-        }
-      >
-        {title}
-      </h3>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="mb-4 text-3xl">
+            {icon}
+          </div>
+
+          <h3 className="text-xl font-bold text-white transition group-hover:text-orange-400">
+            {title}
+          </h3>
+        </div>
+
+        <span className="text-xl text-slate-600 transition group-hover:translate-x-1 group-hover:text-orange-400">
+          →
+        </span>
+      </div>
 
       <p className="mt-3 text-sm leading-6 text-slate-400">
         {description}
@@ -637,58 +625,19 @@ function DashboardLink({
   );
 }
 
-/* =========================
-   MESSAGE STATUS
-========================= */
+/* =========================================================
+   ANALYTICS BADGE
+========================================================= */
 
-function MessageStatus({
-  status,
+function AnalyticsBadge({
+  children,
 }: {
-  status: string;
+  children:
+    React.ReactNode;
 }) {
-  const style =
-    status === "Unread"
-      ? "bg-orange-500/10 text-orange-400"
-      : status === "Resolved"
-        ? "bg-green-500/10 text-green-400"
-        : "bg-blue-500/10 text-blue-400";
-
   return (
-    <span
-      className={`rounded-full px-3 py-1 text-xs font-semibold ${style}`}
-    >
-      {status}
+    <span className="rounded-full border border-slate-700 bg-slate-950/60 px-4 py-2">
+      {children}
     </span>
-  );
-}
-
-/* =========================
-   DATE
-========================= */
-
-function formatDate(
-  value?: string | Date
-) {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-    return "-";
-  }
-
-  return date.toLocaleDateString(
-    "en-IN",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }
   );
 }
