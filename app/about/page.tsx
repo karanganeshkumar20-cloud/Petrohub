@@ -4,99 +4,475 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
+/* =========================================================
+   SITE URL
+========================================================= */
+
+const PRODUCTION_URL =
+  "https://petrohub-dlor.vercel.app";
+
+function getSiteUrl() {
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim();
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    (
+      !configuredUrl ||
+      configuredUrl.includes("localhost") ||
+      configuredUrl.includes("127.0.0.1")
+    )
+  ) {
+    return PRODUCTION_URL;
+  }
+
+  return (
+    configuredUrl ||
+    "http://localhost:3000"
+  ).replace(/\/+$/, "");
+}
+
+/* =========================================================
+   SEO
+========================================================= */
+
 export const metadata: Metadata = {
+  /*
+   * Root layout already adds:
+   * "%s | PetroHub"
+   */
+
   title:
-    "About PetroHub | Engineering Knowledge Platform",
+    "About PetroHub",
 
   description:
-    "Learn about PetroHub, an engineering knowledge platform for engineers, HSE professionals, technical professionals and students.",
+    "Learn about PetroHub, an engineering knowledge platform providing practical articles, technical resources and professional learning across Oil & Gas, HSE and engineering disciplines.",
+
+  keywords: [
+    "About PetroHub",
+    "Engineering Knowledge Platform",
+    "Engineering Education",
+    "Engineering Articles",
+    "Engineering Resources",
+    "Oil and Gas Engineering",
+    "HSE",
+    "Petroleum Engineering",
+    "Mechanical Engineering",
+    "Electrical Engineering",
+    "Instrumentation Engineering",
+    "Process Engineering",
+    "Civil Engineering",
+    "Geology",
+  ],
 
   alternates: {
-    canonical: "/about",
+    canonical:
+      "/about",
+  },
+
+  robots: {
+    index:
+      true,
+
+    follow:
+      true,
+
+    googleBot: {
+      index:
+        true,
+
+      follow:
+        true,
+
+      "max-image-preview":
+        "large",
+
+      "max-snippet":
+        -1,
+
+      "max-video-preview":
+        -1,
+    },
+  },
+
+  openGraph: {
+    type:
+      "website",
+
+    locale:
+      "en_US",
+
+    url:
+      "/about",
+
+    siteName:
+      "PetroHub",
+
+    title:
+      "About PetroHub | Engineering Knowledge Platform",
+
+    description:
+      "Discover PetroHub's mission to make practical engineering knowledge, professional resources and technical learning easier to access.",
+  },
+
+  twitter: {
+    card:
+      "summary_large_image",
+
+    title:
+      "About PetroHub | Engineering Knowledge Platform",
+
+    description:
+      "Learn about PetroHub's engineering knowledge platform, mission, disciplines and approach to professional technical resources.",
   },
 };
 
+/* =========================================================
+   DISCIPLINES
+========================================================= */
+
 const disciplines = [
   {
-    title: "HSE",
+    title:
+      "HSE",
+
+    slug:
+      "hse",
+
     description:
       "Safety, HIRA, PTW, LOTO, incident investigation and workplace risk management.",
   },
+
   {
-    title: "Oil & Gas",
+    title:
+      "Oil & Gas",
+
+    slug:
+      "oil-gas",
+
     description:
       "Drilling, production, reservoir engineering and petroleum operations.",
   },
+
   {
-    title: "Mechanical",
+    title:
+      "Mechanical",
+
+    slug:
+      "mechanical",
+
     description:
       "Piping, equipment, maintenance, corrosion and mechanical engineering.",
   },
+
   {
-    title: "Electrical",
+    title:
+      "Electrical",
+
+    slug:
+      "electrical",
+
     description:
       "Electrical safety, power systems, isolation and industrial equipment.",
   },
+
   {
-    title: "Instrumentation",
+    title:
+      "Instrumentation",
+
+    slug:
+      "instrumentation",
+
     description:
       "Sensors, transmitters, calibration, measurement and control systems.",
   },
+
   {
-    title: "Process",
+    title:
+      "Process",
+
+    slug:
+      "process",
+
     description:
       "Process engineering, HAZOP, process safety and industrial operations.",
   },
+
   {
-    title: "Civil",
+    title:
+      "Civil",
+
+    slug:
+      "civil",
+
     description:
       "Construction practices, structural systems and civil engineering.",
   },
+
   {
-    title: "Geology",
+    title:
+      "Geology",
+
+    slug:
+      "geology",
+
     description:
       "Petroleum geology, formations, reservoirs and subsurface knowledge.",
   },
 ];
 
+/* =========================================================
+   PRINCIPLES
+========================================================= */
+
 const principles = [
   {
-    number: "01",
-    title: "Practical Knowledge",
+    number:
+      "01",
+
+    title:
+      "Practical Knowledge",
+
     description:
       "Focus on engineering information that professionals and students can apply in real-world situations.",
   },
+
   {
-    number: "02",
-    title: "Clear Learning",
+    number:
+      "02",
+
+    title:
+      "Clear Learning",
+
     description:
       "Present technical topics in a structured and understandable format.",
   },
+
   {
-    number: "03",
-    title: "Responsible Resources",
+    number:
+      "03",
+
+    title:
+      "Responsible Resources",
+
     description:
       "Host appropriate resources and direct users to official sources where required.",
   },
+
   {
-    number: "04",
-    title: "Continuous Learning",
+    number:
+      "04",
+
+    title:
+      "Continuous Learning",
+
     description:
       "Build a growing knowledge base across engineering and industrial disciplines.",
   },
 ];
 
+/* =========================================================
+   PAGE
+========================================================= */
+
 export default function AboutPage() {
+  const siteUrl =
+    getSiteUrl();
+
+  const aboutUrl =
+    `${siteUrl}/about`;
+
+  /* =====================================================
+     STRUCTURED DATA
+  ===================================================== */
+
+  const structuredData = {
+    "@context":
+      "https://schema.org",
+
+    "@graph": [
+      {
+        "@type":
+          "Organization",
+
+        "@id":
+          `${siteUrl}/#organization`,
+
+        name:
+          "PetroHub",
+
+        url:
+          siteUrl,
+
+        description:
+          "PetroHub is an engineering knowledge platform providing practical technical articles, professional references and engineering resources.",
+      },
+
+      {
+        "@type":
+          "AboutPage",
+
+        "@id":
+          `${aboutUrl}#webpage`,
+
+        url:
+          aboutUrl,
+
+        name:
+          "About PetroHub",
+
+        headline:
+          "Engineering knowledge built for practical learning.",
+
+        description:
+          "Learn about PetroHub, its engineering knowledge platform, mission, disciplines and approach to professional technical resources.",
+
+        inLanguage:
+          "en",
+
+        isPartOf: {
+          "@type":
+            "WebSite",
+
+          "@id":
+            `${siteUrl}/#website`,
+
+          name:
+            "PetroHub",
+
+          url:
+            siteUrl,
+        },
+
+        about: {
+          "@id":
+            `${siteUrl}/#organization`,
+        },
+
+        mainEntity: {
+          "@id":
+            `${siteUrl}/#organization`,
+        },
+      },
+
+      {
+        "@type":
+          "BreadcrumbList",
+
+        "@id":
+          `${aboutUrl}#breadcrumb`,
+
+        itemListElement: [
+          {
+            "@type":
+              "ListItem",
+
+            position:
+              1,
+
+            name:
+              "Home",
+
+            item:
+              siteUrl,
+          },
+
+          {
+            "@type":
+              "ListItem",
+
+            position:
+              2,
+
+            name:
+              "About PetroHub",
+
+            item:
+              aboutUrl,
+          },
+        ],
+      },
+
+      {
+        "@type":
+          "ItemList",
+
+        "@id":
+          `${aboutUrl}#disciplines`,
+
+        name:
+          "Engineering Disciplines on PetroHub",
+
+        numberOfItems:
+          disciplines.length,
+
+        itemListElement:
+          disciplines.map(
+            (
+              discipline,
+              index
+            ) => ({
+              "@type":
+                "ListItem",
+
+              position:
+                index + 1,
+
+              name:
+                discipline.title,
+
+              url:
+                `${siteUrl}/categories/${discipline.slug}`,
+            })
+          ),
+      },
+    ],
+  };
+
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <Navbar />
 
-      {/* HERO */}
+      {/* STRUCTURED DATA */}
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html:
+            JSON.stringify(
+              structuredData
+            ).replace(
+              /</g,
+              "\\u003c"
+            ),
+        }}
+      />
+
+      {/* =================================================
+          HERO
+      ================================================= */}
 
       <section className="relative overflow-hidden border-b border-slate-800 px-6 py-24">
         <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-transparent" />
 
         <div className="relative mx-auto max-w-7xl">
+          {/* Breadcrumb */}
+
+          <div className="mb-8 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+            <Link
+              href="/"
+              className="transition hover:text-orange-400"
+            >
+              Home
+            </Link>
+
+            <span>/</span>
+
+            <span className="text-slate-300">
+              About
+            </span>
+          </div>
+
           <div className="max-w-4xl">
             <p className="font-semibold uppercase tracking-[0.25em] text-orange-500">
               About PetroHub
@@ -104,6 +480,7 @@ export default function AboutPage() {
 
             <h1 className="mt-5 text-5xl font-extrabold leading-tight md:text-6xl">
               Engineering knowledge
+
               <span className="block text-orange-500">
                 built for practical learning.
               </span>
@@ -132,12 +509,21 @@ export default function AboutPage() {
               >
                 Open Library
               </Link>
+
+              <Link
+                href="/categories"
+                className="rounded-xl border border-slate-700 px-7 py-3.5 font-bold text-slate-300 transition hover:border-orange-500 hover:text-orange-400"
+              >
+                Browse Categories
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* PLATFORM */}
+      {/* =================================================
+          PLATFORM
+      ================================================= */}
 
       <section className="border-b border-slate-800 px-6 py-20">
         <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-2">
@@ -203,7 +589,9 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* MISSION */}
+      {/* =================================================
+          MISSION
+      ================================================= */}
 
       <section className="border-b border-slate-800 px-6 py-20">
         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-2">
@@ -250,7 +638,9 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* DISCIPLINES */}
+      {/* =================================================
+          DISCIPLINES
+      ================================================= */}
 
       <section className="border-b border-slate-800 px-6 py-20">
         <div className="mx-auto max-w-7xl">
@@ -267,7 +657,7 @@ export default function AboutPage() {
 
             <Link
               href="/categories"
-              className="font-semibold text-orange-400 hover:text-orange-300"
+              className="font-semibold text-orange-400 transition hover:text-orange-300"
             >
               Explore Categories →
             </Link>
@@ -275,12 +665,15 @@ export default function AboutPage() {
 
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {disciplines.map(
-              (discipline) => (
-                <div
+              (
+                discipline
+              ) => (
+                <Link
                   key={
-                    discipline.title
+                    discipline.slug
                   }
-                  className="rounded-2xl border border-slate-800 bg-slate-900 p-6"
+                  href={`/categories/${discipline.slug}`}
+                  className="group rounded-2xl border border-slate-800 bg-slate-900 p-6 transition hover:-translate-y-1 hover:border-orange-500/50"
                 >
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500/10 text-lg font-black text-orange-400">
                     {discipline.title.charAt(
@@ -288,7 +681,7 @@ export default function AboutPage() {
                     )}
                   </div>
 
-                  <h3 className="mt-5 text-xl font-bold">
+                  <h3 className="mt-5 text-xl font-bold transition group-hover:text-orange-400">
                     {
                       discipline.title
                     }
@@ -299,14 +692,24 @@ export default function AboutPage() {
                       discipline.description
                     }
                   </p>
-                </div>
+
+                  <p className="mt-5 text-sm font-semibold text-orange-400">
+                    Explore{" "}
+                    {
+                      discipline.title
+                    }{" "}
+                    →
+                  </p>
+                </Link>
               )
             )}
           </div>
         </div>
       </section>
 
-      {/* PRINCIPLES */}
+      {/* =================================================
+          PRINCIPLES
+      ================================================= */}
 
       <section className="border-b border-slate-800 px-6 py-20">
         <div className="mx-auto max-w-7xl">
@@ -321,7 +724,9 @@ export default function AboutPage() {
 
           <div className="mt-10 grid gap-6 md:grid-cols-2">
             {principles.map(
-              (principle) => (
+              (
+                principle
+              ) => (
                 <div
                   key={
                     principle.number
@@ -352,7 +757,9 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* RESOURCE POLICY */}
+      {/* =================================================
+          RESOURCE POLICY
+      ================================================= */}
 
       <section className="border-b border-slate-800 px-6 py-20">
         <div className="mx-auto max-w-7xl">
@@ -399,7 +806,9 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* =================================================
+          CTA
+      ================================================= */}
 
       <section className="px-6 py-20">
         <div className="mx-auto max-w-7xl">
@@ -414,19 +823,26 @@ export default function AboutPage() {
                   Explore engineering
                   knowledge on PetroHub.
                 </h2>
+
+                <p className="mt-4 max-w-2xl leading-7 text-slate-400">
+                  Search technical topics,
+                  read engineering articles
+                  and explore professional
+                  library resources.
+                </p>
               </div>
 
               <div className="flex flex-wrap gap-3">
                 <Link
                   href="/search"
-                  className="rounded-xl bg-orange-500 px-7 py-3.5 font-bold text-white hover:bg-orange-600"
+                  className="rounded-xl bg-orange-500 px-7 py-3.5 font-bold text-white transition hover:bg-orange-600"
                 >
                   Search PetroHub
                 </Link>
 
                 <Link
                   href="/contact"
-                  className="rounded-xl border border-slate-700 px-7 py-3.5 font-bold text-slate-300 hover:border-orange-500 hover:text-orange-400"
+                  className="rounded-xl border border-slate-700 px-7 py-3.5 font-bold text-slate-300 transition hover:border-orange-500 hover:text-orange-400"
                 >
                   Contact Us
                 </Link>
@@ -440,6 +856,10 @@ export default function AboutPage() {
     </main>
   );
 }
+
+/* =========================================================
+   INFO CARD
+========================================================= */
 
 function InfoCard({
   value,
