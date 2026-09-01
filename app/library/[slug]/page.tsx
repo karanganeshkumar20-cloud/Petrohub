@@ -1,19 +1,25 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import {
+  cache,
+  type ReactNode,
+} from "react";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import BookmarkButton from "@/components/BookmarkButton";
 
 import BookViewTracker from "@/components/library/BookViewTracker";
 import BookDownloadButton from "@/components/library/BookDownloadButton";
-import ReadingHistoryTracker from "@/components/ReadingHistoryTracker";
 
 import { connectDB } from "@/lib/mongodb";
 import { BookModel } from "@/models/Book";
 
 export const dynamic = "force-dynamic";
+
+/* =========================================================
+   TYPES
+========================================================= */
 
 type Props = {
   params: Promise<{
@@ -21,87 +27,348 @@ type Props = {
   }>;
 };
 
-/* =========================
-   GET BOOK
-========================= */
+type BookPageData = {
+  _id: string;
 
-async function getBook(
-  slug: string
-) {
-  await connectDB();
+  title: string;
 
-  const book =
-    await BookModel.findOne({
-      slug,
-      status: "Published",
-    }).lean();
+  slug: string;
 
-  if (!book) {
-    return null;
+  description?: string;
+
+  category: string;
+
+  contentType?: string;
+
+  resourceType:
+    | "hosted"
+    | "external";
+
+  coverImage?: string;
+
+  author?: string;
+
+  publisher?: string;
+
+  edition?: string;
+
+  year?: number;
+
+  pages?: number;
+
+  fileUrl?: string;
+
+  externalUrl?: string;
+
+  source?: string;
+
+  sourceUrl?: string;
+
+  license?: string;
+
+  featured?: boolean;
+
+  views?: number;
+
+  downloads?: number;
+
+  createdAt?: string;
+
+  updatedAt?: string;
+};
+
+type RelatedBookData = {
+  _id: string;
+
+  title: string;
+
+  slug: string;
+
+  category: string;
+
+  contentType?: string;
+
+  coverImage?: string;
+
+  author?: string;
+};
+
+/* =========================================================
+   SITE URL
+========================================================= */
+
+const PRODUCTION_URL =
+  "https://petrohub-dlor.vercel.app";
+
+function getSiteUrl() {
+  const configuredUrl =
+    process.env
+      .NEXT_PUBLIC_SITE_URL
+      ?.trim();
+
+  if (
+    process.env.NODE_ENV ===
+      "production" &&
+    (
+      !configuredUrl ||
+      configuredUrl.includes(
+        "localhost"
+      ) ||
+      configuredUrl.includes(
+        "127.0.0.1"
+      )
+    )
+  ) {
+    return PRODUCTION_URL;
   }
 
-  return JSON.parse(
-    JSON.stringify(book)
+  return (
+    configuredUrl ||
+    "http://localhost:3000"
+  ).replace(
+    /\/+$/,
+    ""
   );
 }
 
-/* =========================
-   METADATA
-========================= */
+/* =========================================================
+   TEXT HELPERS
+========================================================= */
+
+function cleanText(
+  value?: string
+) {
+  return (
+    value || ""
+  )
+    .replace(
+      /\s+/g,
+      " "
+    )
+    .trim();
+}
+
+function createDescription(
+  book: BookPageData
+) {
+  const description =
+    cleanText(
+      book.description
+    );
+
+  if (
+    description
+  ) {
+    return description.slice(
+      0,
+      155
+    );
+  }
+
+  return `Explore ${book.title} in the PetroHub Engineering Library. Access engineering knowledge, technical references and professional learning resources.`;
+}
+
+function toIsoDate(
+  value?: string
+) {
+  if (!value) {
+    return undefined;
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return undefined;
+  }
+
+  return date.toISOString();
+}
+
+/* =========================================================
+   GET RESOURCE
+========================================================= */
+
+const getBook = cache(
+  async (
+    slug: string
+  ): Promise<BookPageData | null> => {
+    await connectDB();
+
+    const book =
+      await BookModel.findOne({
+        slug,
+        status:
+          "Published",
+      }).lean();
+
+    if (!book) {
+      return null;
+    }
+
+    return JSON.parse(
+      JSON.stringify(
+        book
+      )
+    ) as BookPageData;
+  }
+);
+
+/* =========================================================
+   SEO METADATA
+========================================================= */
 
 export async function generateMetadata({
   params,
 }: Props): Promise<Metadata> {
-  const { slug } =
-    await params;
+  const {
+    slug,
+  } = await params;
 
   const book =
-    await getBook(slug);
+    await getBook(
+      slug
+    );
 
   if (!book) {
     return {
       title:
-        "Resource Not Found | PetroHub",
+        "Resource Not Found",
 
       description:
         "The requested PetroHub library resource could not be found.",
+
+      robots: {
+        index:
+          false,
+
+        follow:
+          false,
+      },
     };
   }
 
   const siteUrl =
-    process.env
-      .NEXT_PUBLIC_SITE_URL ||
-    "http://localhost:3000";
+    getSiteUrl();
 
   const canonicalUrl =
     `${siteUrl}/library/${book.slug}`;
 
-  const title =
+  /*
+   * Root layout already uses:
+   *
+   * template: "%s | PetroHub"
+   *
+   * So don't add "| PetroHub"
+   * to metadata.title here.
+   */
+
+  const socialTitle =
     `${book.title} | PetroHub`;
 
   const description =
-    book.description?.slice(
-      0,
-      155
-    ) ||
-    `Explore ${book.title} in the PetroHub Engineering Library.`;
+    createDescription(
+      book
+    );
+
+  const keywords = [
+    book.title,
+
+    book.category,
+
+    book.author,
+
+    book.publisher,
+
+    book.contentType,
+
+    "PetroHub",
+
+    "Engineering Library",
+
+    "Engineering Resources",
+
+    "Technical Resources",
+  ].filter(
+    (
+      value
+    ): value is string =>
+      Boolean(value)
+  );
+
+  const publishedTime =
+    toIsoDate(
+      book.createdAt
+    );
+
+  const modifiedTime =
+    toIsoDate(
+      book.updatedAt
+    );
 
   return {
-    title,
+    title:
+      book.title,
+
     description,
+
+    keywords,
 
     alternates: {
       canonical:
         canonicalUrl,
     },
 
+    robots: {
+      index:
+        true,
+
+      follow:
+        true,
+
+      googleBot: {
+        index:
+          true,
+
+        follow:
+          true,
+
+        "max-image-preview":
+          "large",
+
+        "max-snippet":
+          -1,
+
+        "max-video-preview":
+          -1,
+      },
+    },
+
     openGraph: {
-      title,
-      description,
-      url: canonicalUrl,
+      type:
+        "article",
+
+      url:
+        canonicalUrl,
+
       siteName:
         "PetroHub",
-      type: "article",
+
+      locale:
+        "en_US",
+
+      title:
+        socialTitle,
+
+      description,
+
+      publishedTime,
+
+      modifiedTime,
 
       images:
         book.coverImage
@@ -121,7 +388,9 @@ export async function generateMetadata({
       card:
         "summary_large_image",
 
-      title,
+      title:
+        socialTitle,
+
       description,
 
       images:
@@ -134,14 +403,16 @@ export async function generateMetadata({
   };
 }
 
-/* =========================
+/* =========================================================
    RELATED RESOURCES
-========================= */
+========================================================= */
 
 async function getRelatedBooks(
   category: string,
   bookId: string
-) {
+): Promise<
+  RelatedBookData[]
+> {
   await connectDB();
 
   const books =
@@ -157,31 +428,42 @@ async function getRelatedBooks(
       },
     })
       .sort({
-        featured: -1,
-        createdAt: -1,
+        featured:
+          -1,
+
+        createdAt:
+          -1,
       })
-      .limit(4)
+      .limit(
+        4
+      )
+      .select(
+        "_id title slug category contentType coverImage author"
+      )
       .lean();
 
   return JSON.parse(
     JSON.stringify(
       books
     )
-  );
+  ) as RelatedBookData[];
 }
 
-/* =========================
-   BOOK PAGE
-========================= */
+/* =========================================================
+   PAGE
+========================================================= */
 
 export default async function BookPage({
   params,
 }: Props) {
-  const { slug } =
-    await params;
+  const {
+    slug,
+  } = await params;
 
   const book =
-    await getBook(slug);
+    await getBook(
+      slug
+    );
 
   if (!book) {
     notFound();
@@ -194,83 +476,195 @@ export default async function BookPage({
     );
 
   const siteUrl =
-    process.env
-      .NEXT_PUBLIC_SITE_URL ||
-    "http://localhost:3000";
+    getSiteUrl();
 
   const resourceUrl =
     `${siteUrl}/library/${book.slug}`;
 
-  /* =========================
+  const dateCreated =
+    toIsoDate(
+      book.createdAt
+    );
+
+  const dateModified =
+    toIsoDate(
+      book.updatedAt
+    );
+
+  /* =====================================================
      STRUCTURED DATA
-  ========================= */
+  ===================================================== */
 
   const structuredData = {
     "@context":
       "https://schema.org",
 
-    "@type":
-      book.contentType ===
-      "book"
-        ? "Book"
-        : "CreativeWork",
+    "@graph": [
+      {
+        "@type":
+          book.contentType ===
+          "book"
+            ? "Book"
+            : "CreativeWork",
 
-    name:
-      book.title,
+        "@id":
+          `${resourceUrl}#resource`,
 
-    description:
-      book.description ||
-      undefined,
+        name:
+          book.title,
 
-    url:
-      resourceUrl,
+        headline:
+          book.title,
 
-    image:
-      book.coverImage ||
-      undefined,
+        description:
+          book.description ||
+          createDescription(
+            book
+          ),
 
-    author:
-      book.author
-        ? {
+        url:
+          resourceUrl,
+
+        mainEntityOfPage: {
+          "@type":
+            "WebPage",
+
+          "@id":
+            resourceUrl,
+        },
+
+        image:
+          book.coverImage ||
+          undefined,
+
+        author:
+          book.author
+            ? {
+                "@type":
+                  "Person",
+
+                name:
+                  book.author,
+              }
+            : undefined,
+
+        publisher:
+          book.publisher
+            ? {
+                "@type":
+                  "Organization",
+
+                name:
+                  book.publisher,
+              }
+            : {
+                "@type":
+                  "Organization",
+
+                name:
+                  "PetroHub",
+              },
+
+        dateCreated,
+
+        dateModified,
+
+        datePublished:
+          book.year
+            ? String(
+                book.year
+              )
+            : dateCreated,
+
+        inLanguage:
+          "en",
+
+        genre:
+          book.category,
+
+        educationalUse:
+          "Professional and educational reference",
+
+        isAccessibleForFree:
+          book.resourceType ===
+          "hosted"
+            ? true
+            : undefined,
+
+        encodingFormat:
+          book.resourceType ===
+            "hosted" &&
+          book.fileUrl
+            ? "application/pdf"
+            : undefined,
+
+        sameAs:
+          book.sourceUrl ||
+          book.externalUrl ||
+          undefined,
+      },
+
+      {
+        "@type":
+          "BreadcrumbList",
+
+        "@id":
+          `${resourceUrl}#breadcrumb`,
+
+        itemListElement: [
+          {
             "@type":
-              "Person",
+              "ListItem",
+
+            position:
+              1,
 
             name:
-              book.author,
-          }
-        : undefined,
+              "Home",
 
-    publisher:
-      book.publisher
-        ? {
+            item:
+              siteUrl,
+          },
+
+          {
             "@type":
-              "Organization",
+              "ListItem",
+
+            position:
+              2,
 
             name:
-              book.publisher,
-          }
-        : undefined,
+              "Engineering Library",
 
-    datePublished:
-      book.year
-        ? String(
-            book.year
-          )
-        : undefined,
+            item:
+              `${siteUrl}/library`,
+          },
 
-    educationalUse:
-      "Professional and educational reference",
+          {
+            "@type":
+              "ListItem",
 
-    isAccessibleForFree:
-      book.resourceType ===
-      "hosted",
+            position:
+              3,
+
+            name:
+              book.title,
+
+            item:
+              resourceUrl,
+          },
+        ],
+      },
+    ],
   };
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <Navbar />
 
-      {/* STRUCTURED DATA */}
+      {/* =================================================
+          STRUCTURED DATA
+      ================================================= */}
 
       <script
         type="application/ld+json"
@@ -282,7 +676,9 @@ export default async function BookPage({
         }}
       />
 
-      {/* VIEW TRACKING */}
+      {/* =================================================
+          VIEW TRACKER
+      ================================================= */}
 
       <BookViewTracker
         bookId={
@@ -290,21 +686,12 @@ export default async function BookPage({
         }
       />
 
-      <ReadingHistoryTracker
-  itemType="book"
-  itemId={String(book._id)}
-/>
-
-
-      {/* =========================
+      {/* =================================================
           RESOURCE DETAILS
-      ========================= */}
+      ================================================= */}
 
       <section className="border-b border-slate-800 px-6 py-12 md:py-16">
         <div className="mx-auto max-w-7xl">
-
-          {/* BACK */}
-
           <Link
             href="/library"
             className="inline-flex items-center gap-2 text-sm font-semibold text-orange-400 transition hover:text-orange-300"
@@ -313,14 +700,10 @@ export default async function BookPage({
           </Link>
 
           <div className="mt-10 grid gap-10 lg:grid-cols-[320px_1fr] xl:gap-14">
-
-            {/* =========================
-                COVER
-            ========================= */}
+            {/* COVER */}
 
             <div>
               <div className="sticky top-24">
-
                 {book.coverImage ? (
                   <img
                     src={
@@ -337,10 +720,7 @@ export default async function BookPage({
                   </div>
                 )}
 
-                {/* QUICK STATS */}
-
                 <div className="mt-5 grid grid-cols-2 gap-3">
-
                   <QuickStat
                     label="Views"
                     value={
@@ -357,50 +737,13 @@ export default async function BookPage({
                     }
                   />
                 </div>
-
-                {/* SAVE CARD */}
-
-                <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900 p-4">
-                  <p className="font-semibold">
-                    Save for later
-                  </p>
-
-                  <p className="mt-2 text-sm leading-6 text-slate-500">
-                    Add this resource
-                    to your PetroHub
-                    saved collection.
-                  </p>
-
-                  <div className="mt-4">
-                    <BookmarkButton
-                      itemType="book"
-                      itemId={
-                        book._id
-                      }
-                      className="w-full"
-                    />
-                  </div>
-
-                  <Link
-                    href="/profile"
-                    className="mt-3 block text-center text-sm font-semibold text-slate-500 transition hover:text-orange-400"
-                  >
-                    View saved items →
-                  </Link>
-                </div>
               </div>
             </div>
 
-            {/* =========================
-                DETAILS
-            ========================= */}
+            {/* DETAILS */}
 
             <div>
-
-              {/* BADGES */}
-
               <div className="flex flex-wrap gap-2">
-
                 <Badge orange>
                   {
                     book.category
@@ -427,15 +770,11 @@ export default async function BookPage({
                 )}
               </div>
 
-              {/* TITLE */}
-
               <h1 className="mt-6 max-w-4xl text-4xl font-extrabold leading-tight md:text-5xl">
                 {
                   book.title
                 }
               </h1>
-
-              {/* AUTHOR */}
 
               {book.author && (
                 <p className="mt-4 text-lg text-slate-400">
@@ -448,8 +787,6 @@ export default async function BookPage({
                 </p>
               )}
 
-              {/* DESCRIPTION */}
-
               {book.description && (
                 <div className="mt-7 max-w-4xl">
                   <p className="whitespace-pre-line text-lg leading-8 text-slate-300">
@@ -460,14 +797,9 @@ export default async function BookPage({
                 </div>
               )}
 
-              {/* =========================
-                  ACTIONS
-              ========================= */}
+              {/* ACTIONS */}
 
               <div className="mt-8 flex flex-wrap gap-3">
-
-                {/* HOSTED RESOURCE */}
-
                 {book.resourceType ===
                   "hosted" &&
                   book.fileUrl && (
@@ -487,8 +819,6 @@ export default async function BookPage({
                     </>
                   )}
 
-                {/* EXTERNAL RESOURCE */}
-
                 {book.resourceType ===
                   "external" &&
                   book.externalUrl && (
@@ -500,12 +830,9 @@ export default async function BookPage({
                       rel="noopener noreferrer"
                       className="rounded-xl bg-orange-500 px-6 py-3 font-bold text-white transition hover:bg-orange-600"
                     >
-                      Visit Official
-                      Source →
+                      Visit Official Source →
                     </a>
                   )}
-
-                {/* SOURCE URL */}
 
                 {book.sourceUrl && (
                   <a
@@ -519,20 +846,9 @@ export default async function BookPage({
                     Source Information
                   </a>
                 )}
-
-                {/* SAVE BUTTON */}
-
-                <BookmarkButton
-                  itemType="book"
-                  itemId={
-                    book._id
-                  }
-                />
               </div>
 
-              {/* =========================
-                  RESOURCE INFO
-              ========================= */}
+              {/* METADATA */}
 
               <div className="mt-10">
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-500">
@@ -540,7 +856,6 @@ export default async function BookPage({
                 </p>
 
                 <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-
                   <Meta
                     label="Content Type"
                     value={getContentTypeLabel(
@@ -593,14 +908,11 @@ export default async function BookPage({
                 </div>
               </div>
 
-              {/* =========================
-                  SOURCE & RIGHTS
-              ========================= */}
+              {/* SOURCE */}
 
               {(book.source ||
                 book.license) && (
                 <div className="mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
-
                   <div className="border-b border-slate-800 px-6 py-4">
                     <h2 className="font-bold">
                       Source & Rights
@@ -608,7 +920,6 @@ export default async function BookPage({
                   </div>
 
                   <div className="space-y-5 p-6">
-
                     {book.source && (
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -626,8 +937,7 @@ export default async function BookPage({
                     {book.license && (
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                          License /
-                          Rights
+                          License / Rights
                         </p>
 
                         <p className="mt-2 leading-6 text-slate-300">
@@ -641,9 +951,7 @@ export default async function BookPage({
                 </div>
               )}
 
-              {/* =========================
-                  DISCLAIMER
-              ========================= */}
+              {/* DISCLAIMER */}
 
               <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
                 <p className="text-sm leading-6 text-slate-400">
@@ -665,9 +973,9 @@ export default async function BookPage({
         </div>
       </section>
 
-      {/* =========================
+      {/* =================================================
           PDF READER
-      ========================= */}
+      ================================================= */}
 
       {book.resourceType ===
         "hosted" &&
@@ -677,9 +985,7 @@ export default async function BookPage({
             className="border-b border-slate-800 px-6 py-16"
           >
             <div className="mx-auto max-w-7xl">
-
               <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-
                 <div>
                   <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
                     Online Reader
@@ -703,10 +1009,7 @@ export default async function BookPage({
                 />
               </div>
 
-              {/* PDF */}
-
               <div className="mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-xl">
-
                 <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
                   <div className="min-w-0">
                     <p className="truncate font-semibold">
@@ -739,29 +1042,26 @@ export default async function BookPage({
           </section>
         )}
 
-      {/* =========================
+      {/* =================================================
           RELATED RESOURCES
-      ========================= */}
+      ================================================= */}
 
       {relatedBooks.length >
         0 && (
         <section className="px-6 py-16">
           <div className="mx-auto max-w-7xl">
-
             <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
               Continue Learning
             </p>
 
             <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-
               <div>
                 <h2 className="text-3xl font-bold">
                   Related Resources
                 </h2>
 
                 <p className="mt-3 text-slate-400">
-                  More resources
-                  from{" "}
+                  More resources from{" "}
                   {
                     book.category
                   }
@@ -771,17 +1071,16 @@ export default async function BookPage({
 
               <Link
                 href="/library"
-                className="font-semibold text-orange-400 transition hover:text-orange-300"
+                className="font-semibold text-orange-400 hover:text-orange-300"
               >
                 Browse Library →
               </Link>
             </div>
 
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-
               {relatedBooks.map(
                 (
-                  item: any
+                  item
                 ) => (
                   <Link
                     key={
@@ -791,7 +1090,6 @@ export default async function BookPage({
                     className="group overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 transition hover:-translate-y-1 hover:border-orange-500/50"
                   >
                     <div className="relative">
-
                       {item.coverImage ? (
                         <img
                           src={
@@ -800,6 +1098,7 @@ export default async function BookPage({
                           alt={
                             item.title
                           }
+                          loading="lazy"
                           className="aspect-[3/4] w-full object-cover"
                         />
                       ) : (
@@ -816,7 +1115,6 @@ export default async function BookPage({
                     </div>
 
                     <div className="p-5">
-
                       <span className="text-sm font-semibold text-orange-400">
                         {
                           item.category
@@ -854,15 +1152,16 @@ export default async function BookPage({
   );
 }
 
-/* =========================
+/* =========================================================
    META CARD
-========================= */
+========================================================= */
 
 function Meta({
   label,
   value,
 }: {
   label: string;
+
   value?: string;
 }) {
   if (!value) {
@@ -882,15 +1181,16 @@ function Meta({
   );
 }
 
-/* =========================
+/* =========================================================
    QUICK STAT
-========================= */
+========================================================= */
 
 function QuickStat({
   label,
   value,
 }: {
   label: string;
+
   value: number;
 }) {
   return (
@@ -906,18 +1206,19 @@ function QuickStat({
   );
 }
 
-/* =========================
+/* =========================================================
    BADGE
-========================= */
+========================================================= */
 
 function Badge({
   children,
   orange = false,
 }: {
   children:
-    React.ReactNode;
+    ReactNode;
 
-  orange?: boolean;
+  orange?:
+    boolean;
 }) {
   return (
     <span
@@ -932,9 +1233,9 @@ function Badge({
   );
 }
 
-/* =========================
-   CONTENT TYPE
-========================= */
+/* =========================================================
+   CONTENT TYPE LABEL
+========================================================= */
 
 function getContentTypeLabel(
   contentType?: string
