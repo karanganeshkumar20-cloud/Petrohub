@@ -1,214 +1,130 @@
-import type {
-  MetadataRoute,
-} from "next";
+import type { MetadataRoute } from "next";
 
-import {
-  connectDB,
-} from "@/lib/mongodb";
-
+import { connectDB } from "@/lib/mongodb";
 import Article from "@/models/Article";
+import { BookModel } from "@/models/Book";
 
-import {
-  BookModel,
-} from "@/models/Book";
+export const dynamic = "force-dynamic";
 
-export const dynamic =
-  "force-dynamic";
-
-/* =========================================================
-   TYPES
-========================================================= */
-
-type SitemapArticle = {
+type SitemapDocument = {
   slug: string;
-
-  updatedAt?:
-    Date;
-
-  createdAt?:
-    Date;
+  updatedAt?: Date;
+  createdAt?: Date;
 };
 
-type SitemapBook = {
-  slug: string;
-
-  updatedAt?:
-    Date;
-
-  createdAt?:
-    Date;
-};
-
-/* =========================================================
-   SITE URL
-========================================================= */
+const PRODUCTION_URL =
+  "https://petrohub-dlor.vercel.app";
 
 function getSiteUrl() {
-  return (
-    process.env
-      .NEXT_PUBLIC_SITE_URL ||
-    "http://localhost:3000"
-  ).replace(
-    /\/+$/,
-    ""
-  );
-}
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim();
 
-/* =========================================================
-   SITEMAP
-========================================================= */
+  // Production-la localhost accidentally configured
+  // aagirundhaalum correct public URL use pannum.
+  if (
+    process.env.NODE_ENV === "production" &&
+    (!configuredUrl ||
+      configuredUrl.includes("localhost") ||
+      configuredUrl.includes("127.0.0.1"))
+  ) {
+    return PRODUCTION_URL;
+  }
+
+  return (
+    configuredUrl ||
+    "http://localhost:3000"
+  ).replace(/\/+$/, "");
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl =
     getSiteUrl();
 
+  const now =
+    new Date();
+
   /* =====================================================
      STATIC PAGES
   ===================================================== */
 
-  const staticPages:
-    MetadataRoute.Sitemap =
-    [
-      {
-        url:
-          siteUrl,
-
-        lastModified:
-          new Date(),
-
-        changeFrequency:
-          "daily",
-
-        priority:
-          1,
-      },
-
-      {
-        url:
-          `${siteUrl}/articles`,
-
-        lastModified:
-          new Date(),
-
-        changeFrequency:
-          "daily",
-
-        priority:
-          0.9,
-      },
-
-      {
-        url:
-          `${siteUrl}/library`,
-
-        lastModified:
-          new Date(),
-
-        changeFrequency:
-          "daily",
-
-        priority:
-          0.9,
-      },
-
-      {
-        url:
-          `${siteUrl}/categories`,
-
-        lastModified:
-          new Date(),
-
-        changeFrequency:
-          "weekly",
-
-        priority:
-          0.8,
-      },
-
-      {
-        url:
-          `${siteUrl}/about`,
-
-        lastModified:
-          new Date(),
-
-        changeFrequency:
-          "monthly",
-
-        priority:
-          0.6,
-      },
-
-      {
-        url:
-          `${siteUrl}/contact`,
-
-        lastModified:
-          new Date(),
-
-        changeFrequency:
-          "monthly",
-
-        priority:
-          0.5,
-      },
-    ];
+  const staticPages: MetadataRoute.Sitemap = [
+    {
+      url: siteUrl,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 1,
+    },
+    {
+      url: `${siteUrl}/articles`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
+      url: `${siteUrl}/library`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
+      url: `${siteUrl}/categories`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${siteUrl}/about`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
+      url: `${siteUrl}/contact`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+  ];
 
   /* =====================================================
      CATEGORY PAGES
   ===================================================== */
 
-  const categories =
-    [
-      "hse",
-      "oil-gas",
-      "mechanical",
-      "civil",
-      "electrical",
-      "instrumentation",
-      "process",
-      "geology",
-    ];
+  const categories = [
+    "hse",
+    "oil-gas",
+    "mechanical",
+    "civil",
+    "electrical",
+    "instrumentation",
+    "process",
+    "geology",
+  ];
 
-  const categoryPages:
-    MetadataRoute.Sitemap =
-    categories.map(
-      (
-        category
-      ) => ({
-        url:
-          `${siteUrl}/categories/${category}`,
+  const categoryPages: MetadataRoute.Sitemap =
+    categories.map((category) => ({
+      url:
+        `${siteUrl}/categories/${category}`,
 
-        lastModified:
-          new Date(),
+      lastModified:
+        now,
 
-        changeFrequency:
-          "weekly" as const,
+      changeFrequency:
+        "weekly",
 
-        priority:
-          0.7,
-      })
-    );
+      priority:
+        0.7,
+    }));
 
   /* =====================================================
-     ARTICLE PAGES
+     DYNAMIC CONTENT
   ===================================================== */
 
-  let articlePages:
-    MetadataRoute.Sitemap =
+  let articlePages: MetadataRoute.Sitemap =
     [];
 
-  /* =====================================================
-     LIBRARY PAGES
-  ===================================================== */
-
-  let libraryPages:
-    MetadataRoute.Sitemap =
+  let libraryPages: MetadataRoute.Sitemap =
     [];
-
-  /* =====================================================
-     DATABASE
-  ===================================================== */
 
   try {
     await connectDB();
@@ -216,133 +132,88 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const [
       articleDocuments,
       bookDocuments,
-    ] =
-      await Promise.all([
-        Article.find({
-          status:
-            "Published",
-        })
-          .select(
-            "slug updatedAt createdAt"
-          )
-          .lean(),
+    ] = await Promise.all([
+      Article.find({
+        status: "Published",
+      })
+        .select(
+          "slug updatedAt createdAt"
+        )
+        .lean(),
 
-        BookModel.find({
-          status:
-            "Published",
-        })
-          .select(
-            "slug updatedAt createdAt"
-          )
-          .lean(),
-      ]);
-
-    /* ===================================================
-       ARTICLES
-    =================================================== */
+      BookModel.find({
+        status: "Published",
+      })
+        .select(
+          "slug updatedAt createdAt"
+        )
+        .lean(),
+    ]);
 
     const articles =
-      articleDocuments as unknown as
-        SitemapArticle[];
+      articleDocuments as unknown as SitemapDocument[];
+
+    const books =
+      bookDocuments as unknown as SitemapDocument[];
 
     articlePages =
       articles
         .filter(
-          (
-            article
-          ) =>
-            Boolean(
-              article.slug
-            )
+          (article) =>
+            Boolean(article.slug)
         )
         .map(
-          (
-            article
-          ) => ({
+          (article) => ({
             url:
               `${siteUrl}/articles/${article.slug}`,
 
             lastModified:
               article.updatedAt ||
               article.createdAt ||
-              new Date(),
+              now,
 
             changeFrequency:
-              "monthly" as const,
+              "monthly",
 
             priority:
               0.8,
           })
         );
 
-    /* ===================================================
-       BOOKS / LIBRARY
-    =================================================== */
-
-    const books =
-      bookDocuments as unknown as
-        SitemapBook[];
-
     libraryPages =
       books
         .filter(
-          (
-            book
-          ) =>
-            Boolean(
-              book.slug
-            )
+          (book) =>
+            Boolean(book.slug)
         )
         .map(
-          (
-            book
-          ) => ({
+          (book) => ({
             url:
               `${siteUrl}/library/${book.slug}`,
 
             lastModified:
               book.updatedAt ||
               book.createdAt ||
-              new Date(),
+              now,
 
             changeFrequency:
-              "monthly" as const,
+              "monthly",
 
             priority:
               0.8,
           })
         );
-  } catch (
-    error
-  ) {
-    /*
-      IMPORTANT:
-
-      Sitemap should still return
-      static/category URLs even if
-      MongoDB temporarily fails.
-
-      This prevents the entire
-      sitemap.xml from crashing.
-    */
-
+  } catch (error) {
     console.error(
       "Unable to load dynamic sitemap URLs:",
       error
     );
   }
 
-  /* =====================================================
-     FINAL SITEMAP
-  ===================================================== */
-
   return [
     ...staticPages,
-
     ...categoryPages,
-
     ...articlePages,
-
     ...libraryPages,
   ];
 }
