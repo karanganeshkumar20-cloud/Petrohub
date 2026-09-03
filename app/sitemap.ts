@@ -1,16 +1,25 @@
 import type { MetadataRoute } from "next";
 
 import { connectDB } from "@/lib/mongodb";
+
 import Article from "@/models/Article";
 import { BookModel } from "@/models/Book";
 
 export const dynamic = "force-dynamic";
 
+/* =========================================================
+   TYPES
+========================================================= */
+
 type SitemapDocument = {
   slug: string;
-  updatedAt?: Date;
-  createdAt?: Date;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 };
+
+/* =========================================================
+   SITE URL
+========================================================= */
 
 const PRODUCTION_URL =
   "https://petrohub-dlor.vercel.app";
@@ -19,13 +28,13 @@ function getSiteUrl() {
   const configuredUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.trim();
 
-  // Production-la localhost accidentally configured
-  // aagirundhaalum correct public URL use pannum.
   if (
     process.env.NODE_ENV === "production" &&
-    (!configuredUrl ||
+    (
+      !configuredUrl ||
       configuredUrl.includes("localhost") ||
-      configuredUrl.includes("127.0.0.1"))
+      configuredUrl.includes("127.0.0.1")
+    )
   ) {
     return PRODUCTION_URL;
   }
@@ -36,53 +45,110 @@ function getSiteUrl() {
   ).replace(/\/+$/, "");
 }
 
+/* =========================================================
+   DATE
+========================================================= */
+
+function getValidDate(
+  value?: Date | string
+): Date | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const date =
+    value instanceof Date
+      ? value
+      : new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return undefined;
+  }
+
+  return date;
+}
+
+/* =========================================================
+   SITEMAP
+========================================================= */
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl =
     getSiteUrl();
 
-  const now =
-    new Date();
-
   /* =====================================================
-     STATIC PAGES
+     STATIC PUBLIC PAGES
   ===================================================== */
 
   const staticPages: MetadataRoute.Sitemap = [
     {
-      url: siteUrl,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 1,
+      url:
+        siteUrl,
+
+      changeFrequency:
+        "daily",
+
+      priority:
+        1,
     },
+
     {
-      url: `${siteUrl}/articles`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.9,
+      url:
+        `${siteUrl}/articles`,
+
+      changeFrequency:
+        "daily",
+
+      priority:
+        0.9,
     },
+
     {
-      url: `${siteUrl}/library`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.9,
+      url:
+        `${siteUrl}/library`,
+
+      changeFrequency:
+        "daily",
+
+      priority:
+        0.9,
     },
+
     {
-      url: `${siteUrl}/categories`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.8,
+      url:
+        `${siteUrl}/categories`,
+
+      changeFrequency:
+        "weekly",
+
+      priority:
+        0.8,
     },
+
     {
-      url: `${siteUrl}/about`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.6,
+      url:
+        `${siteUrl}/about`,
+
+      changeFrequency:
+        "monthly",
+
+      priority:
+        0.6,
     },
+
     {
-      url: `${siteUrl}/contact`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.5,
+      url:
+        `${siteUrl}/contact`,
+
+      changeFrequency:
+        "monthly",
+
+      priority:
+        0.5,
     },
   ];
 
@@ -90,31 +156,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
      CATEGORY PAGES
   ===================================================== */
 
-  const categories = [
+  const categorySlugs = [
     "hse",
     "oil-gas",
     "mechanical",
-    "civil",
     "electrical",
     "instrumentation",
     "process",
+    "civil",
     "geology",
   ];
 
   const categoryPages: MetadataRoute.Sitemap =
-    categories.map((category) => ({
-      url:
-        `${siteUrl}/categories/${category}`,
+    categorySlugs.map(
+      (
+        slug
+      ) => ({
+        url:
+          `${siteUrl}/categories/${slug}`,
 
-      lastModified:
-        now,
+        changeFrequency:
+          "weekly",
 
-      changeFrequency:
-        "weekly",
-
-      priority:
-        0.7,
-    }));
+        priority:
+          0.8,
+      })
+    );
 
   /* =====================================================
      DYNAMIC CONTENT
@@ -134,18 +201,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       bookDocuments,
     ] = await Promise.all([
       Article.find({
-        status: "Published",
+        status:
+          "Published",
       })
         .select(
-          "slug updatedAt createdAt"
+          "slug createdAt updatedAt"
         )
         .lean(),
 
       BookModel.find({
-        status: "Published",
+        status:
+          "Published",
       })
         .select(
-          "slug updatedAt createdAt"
+          "slug createdAt updatedAt"
         )
         .lean(),
     ]);
@@ -156,52 +225,90 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const books =
       bookDocuments as unknown as SitemapDocument[];
 
+    /* ===================================================
+       ARTICLES
+    =================================================== */
+
     articlePages =
       articles
         .filter(
-          (article) =>
-            Boolean(article.slug)
+          (
+            article
+          ) =>
+            Boolean(
+              article.slug
+            )
         )
         .map(
-          (article) => ({
-            url:
-              `${siteUrl}/articles/${article.slug}`,
+          (
+            article
+          ) => {
+            const lastModified =
+              getValidDate(
+                article.updatedAt ||
+                  article.createdAt
+              );
 
-            lastModified:
-              article.updatedAt ||
-              article.createdAt ||
-              now,
+            return {
+              url:
+                `${siteUrl}/articles/${article.slug}`,
 
-            changeFrequency:
-              "monthly",
+              ...(lastModified
+                ? {
+                    lastModified,
+                  }
+                : {}),
 
-            priority:
-              0.8,
-          })
+              changeFrequency:
+                "monthly" as const,
+
+              priority:
+                0.8,
+            };
+          }
         );
+
+    /* ===================================================
+       LIBRARY
+    =================================================== */
 
     libraryPages =
       books
         .filter(
-          (book) =>
-            Boolean(book.slug)
+          (
+            book
+          ) =>
+            Boolean(
+              book.slug
+            )
         )
         .map(
-          (book) => ({
-            url:
-              `${siteUrl}/library/${book.slug}`,
+          (
+            book
+          ) => {
+            const lastModified =
+              getValidDate(
+                book.updatedAt ||
+                  book.createdAt
+              );
 
-            lastModified:
-              book.updatedAt ||
-              book.createdAt ||
-              now,
+            return {
+              url:
+                `${siteUrl}/library/${book.slug}`,
 
-            changeFrequency:
-              "monthly",
+              ...(lastModified
+                ? {
+                    lastModified,
+                  }
+                : {}),
 
-            priority:
-              0.8,
-          })
+              changeFrequency:
+                "monthly" as const,
+
+              priority:
+                0.8,
+            };
+          }
         );
   } catch (error) {
     console.error(
@@ -209,6 +316,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       error
     );
   }
+
+  /* =====================================================
+     FINAL SITEMAP
+  ===================================================== */
 
   return [
     ...staticPages,

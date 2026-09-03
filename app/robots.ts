@@ -1,5 +1,9 @@
 import type { MetadataRoute } from "next";
 
+/* =========================================================
+   SITE URL
+========================================================= */
+
 const PRODUCTION_URL =
   "https://petrohub-dlor.vercel.app";
 
@@ -9,9 +13,11 @@ function getSiteUrl() {
 
   if (
     process.env.NODE_ENV === "production" &&
-    (!configuredUrl ||
+    (
+      !configuredUrl ||
       configuredUrl.includes("localhost") ||
-      configuredUrl.includes("127.0.0.1"))
+      configuredUrl.includes("127.0.0.1")
+    )
   ) {
     return PRODUCTION_URL;
   }
@@ -22,22 +28,30 @@ function getSiteUrl() {
   ).replace(/\/+$/, "");
 }
 
+/* =========================================================
+   ROBOTS
+========================================================= */
+
 export default function robots(): MetadataRoute.Robots {
   const siteUrl =
     getSiteUrl();
 
   return {
-    rules: {
-      userAgent: "*",
+    rules: [
+      {
+        userAgent:
+          "*",
 
-      allow: "/",
+        allow:
+          "/",
 
-      disallow: [
-        "/admin/",
-        "/api/",
-        "/profile/",
-      ],
-    },
+        disallow: [
+          "/admin/",
+          "/api/",
+          "/profile/",
+        ],
+      },
+    ],
 
     sitemap:
       `${siteUrl}/sitemap.xml`,
