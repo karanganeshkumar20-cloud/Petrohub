@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 import Navbar from "@/components/Navbar";
@@ -34,8 +35,10 @@ type LibraryResource = {
   _id: string;
   title: string;
   slug: string;
+
   author?: string;
   description?: string;
+
   category: string;
 
   contentType?:
@@ -92,15 +95,10 @@ function getSiteUrl() {
 }
 
 /* =========================================================
-   SEO METADATA
+   SEO
 ========================================================= */
 
 export const metadata: Metadata = {
-  /*
-   * Root layout already adds:
-   * "%s | PetroHub"
-   */
-
   title:
     "Engineering Knowledge Platform",
 
@@ -109,38 +107,21 @@ export const metadata: Metadata = {
 
   keywords: [
     "PetroHub",
-
-    "Engineering Knowledge",
-
+    "Engineering Knowledge Platform",
     "Engineering Articles",
-
-    "Engineering Resources",
-
     "Engineering Library",
-
     "Oil and Gas Engineering",
-
     "Petroleum Engineering",
-
     "HSE",
-
-    "Health and Safety",
-
+    "Safety Engineering",
     "Mechanical Engineering",
-
     "Electrical Engineering",
-
     "Instrumentation Engineering",
-
     "Process Engineering",
-
     "Civil Engineering",
-
-    "Petroleum Geology",
-
+    "Geology",
+    "Engineering Resources",
     "Technical Manuals",
-
-    "Engineering Books",
   ],
 
   alternates: {
@@ -190,7 +171,7 @@ export const metadata: Metadata = {
       "PetroHub | Engineering Knowledge Platform",
 
     description:
-      "Practical engineering articles, technical resources and professional knowledge across Oil & Gas, HSE and multidisciplinary engineering.",
+      "Explore practical engineering articles, professional manuals and technical resources across Oil & Gas, HSE, Mechanical, Electrical, Instrumentation, Process, Civil and Geology.",
   },
 
   twitter: {
@@ -201,7 +182,7 @@ export const metadata: Metadata = {
       "PetroHub | Engineering Knowledge Platform",
 
     description:
-      "Explore engineering articles, technical resources and professional knowledge on PetroHub.",
+      "Practical engineering articles, technical resources and professional learning across multiple engineering disciplines.",
   },
 };
 
@@ -308,9 +289,9 @@ async function getHomepageData() {
     await connectDB();
 
     const [
-      articles,
-      featuredResources,
-      popularResources,
+      articleDocuments,
+      featuredResourceDocuments,
+      popularResourceDocuments,
       articleCount,
       resourceCount,
     ] = await Promise.all([
@@ -328,7 +309,9 @@ async function getHomepageData() {
           createdAt:
             -1,
         })
-        .limit(6)
+        .limit(
+          6
+        )
         .lean(),
 
       BookModel.find({
@@ -345,7 +328,9 @@ async function getHomepageData() {
           createdAt:
             -1,
         })
-        .limit(4)
+        .limit(
+          4
+        )
         .lean(),
 
       BookModel.find({
@@ -365,7 +350,9 @@ async function getHomepageData() {
           createdAt:
             -1,
         })
-        .limit(4)
+        .limit(
+          4
+        )
         .lean(),
 
       Article.countDocuments({
@@ -379,30 +366,32 @@ async function getHomepageData() {
       }),
     ]);
 
+    const articles =
+      JSON.parse(
+        JSON.stringify(
+          articleDocuments
+        )
+      ) as ArticleData[];
+
+    const featuredResources =
+      JSON.parse(
+        JSON.stringify(
+          featuredResourceDocuments
+        )
+      ) as LibraryResource[];
+
+    const popularResources =
+      JSON.parse(
+        JSON.stringify(
+          popularResourceDocuments
+        )
+      ) as LibraryResource[];
+
     return {
-      articles:
-        JSON.parse(
-          JSON.stringify(
-            articles
-          )
-        ) as ArticleData[],
-
-      featuredResources:
-        JSON.parse(
-          JSON.stringify(
-            featuredResources
-          )
-        ) as LibraryResource[],
-
-      popularResources:
-        JSON.parse(
-          JSON.stringify(
-            popularResources
-          )
-        ) as LibraryResource[],
-
+      articles,
+      featuredResources,
+      popularResources,
       articleCount,
-
       resourceCount,
     };
   } catch (error) {
@@ -435,6 +424,9 @@ async function getHomepageData() {
 ========================================================= */
 
 export default async function HomePage() {
+  const siteUrl =
+    getSiteUrl();
+
   const {
     articles,
     featuredResources,
@@ -446,13 +438,12 @@ export default async function HomePage() {
 
   const featuredArticle =
     articles.find(
-      (article) =>
+      (
+        article
+      ) =>
         article.featured
     ) ||
     articles[0];
-
-  const siteUrl =
-    getSiteUrl();
 
   /* =====================================================
      STRUCTURED DATA
@@ -463,10 +454,6 @@ export default async function HomePage() {
       "https://schema.org",
 
     "@graph": [
-      /* ===============================
-         ORGANIZATION
-      =============================== */
-
       {
         "@type":
           "Organization",
@@ -481,12 +468,8 @@ export default async function HomePage() {
           siteUrl,
 
         description:
-          "PetroHub is an engineering knowledge platform providing practical articles, technical resources and professional learning content.",
+          "PetroHub is an engineering knowledge platform providing practical engineering articles, professional references and technical resources.",
       },
-
-      /* ===============================
-         WEBSITE
-      =============================== */
 
       {
         "@type":
@@ -502,7 +485,7 @@ export default async function HomePage() {
           "PetroHub",
 
         description:
-          "Engineering knowledge platform for Oil & Gas, HSE and multidisciplinary engineering.",
+          "Engineering knowledge platform for Oil & Gas, HSE and engineering professionals and students.",
 
         publisher: {
           "@id":
@@ -529,10 +512,6 @@ export default async function HomePage() {
         },
       },
 
-      /* ===============================
-         HOMEPAGE
-      =============================== */
-
       {
         "@type":
           "WebPage",
@@ -544,13 +523,10 @@ export default async function HomePage() {
           siteUrl,
 
         name:
-          "PetroHub Engineering Knowledge Platform",
-
-        headline:
-          "Learn Engineering. Build Expertise.",
+          "PetroHub | Engineering Knowledge Platform",
 
         description:
-          "Explore practical engineering articles, professional manuals, technical references and industry resources across HSE, Oil & Gas and engineering disciplines.",
+          "Explore practical engineering articles, professional manuals and technical resources across multiple engineering disciplines.",
 
         isPartOf: {
           "@id":
@@ -565,10 +541,6 @@ export default async function HomePage() {
         inLanguage:
           "en",
       },
-
-      /* ===============================
-         ENGINEERING CATEGORIES
-      =============================== */
 
       {
         "@type":
@@ -604,10 +576,6 @@ export default async function HomePage() {
           ),
       },
 
-      /* ===============================
-         LATEST ARTICLES
-      =============================== */
-
       {
         "@type":
           "ItemList",
@@ -642,19 +610,15 @@ export default async function HomePage() {
           ),
       },
 
-      /* ===============================
-         FEATURED LIBRARY
-      =============================== */
-
       {
         "@type":
           "ItemList",
 
         "@id":
-          `${siteUrl}/#featured-library`,
+          `${siteUrl}/#featured-library-resources`,
 
         name:
-          "Featured Engineering Resources",
+          "Featured Engineering Library Resources",
 
         numberOfItems:
           featuredResources.length,
@@ -686,9 +650,7 @@ export default async function HomePage() {
     <main className="min-h-screen bg-slate-950 text-white">
       <Navbar />
 
-      {/* =================================================
-          STRUCTURED DATA
-      ================================================= */}
+      {/* STRUCTURED DATA */}
 
       <script
         type="application/ld+json"
@@ -696,6 +658,9 @@ export default async function HomePage() {
           __html:
             JSON.stringify(
               structuredData
+            ).replace(
+              /</g,
+              "\\u003c"
             ),
         }}
       />
@@ -722,14 +687,12 @@ export default async function HomePage() {
             </h1>
 
             <p className="mt-7 max-w-3xl text-lg leading-8 text-slate-400 md:text-xl">
-              Explore practical
-              engineering articles,
-              professional manuals,
+              Explore practical engineering
+              articles, professional manuals,
               technical references and
-              industry resources across
-              HSE, Oil & Gas,
-              Mechanical, Electrical
-              and more.
+              industry resources across HSE,
+              Oil & Gas, Mechanical,
+              Electrical and more.
             </p>
 
             {/* GLOBAL SEARCH */}
@@ -741,7 +704,7 @@ export default async function HomePage() {
               className="mt-9 max-w-3xl"
             >
               <label
-                htmlFor="homepage-search"
+                htmlFor="petrohub-home-search"
                 className="sr-only"
               >
                 Search PetroHub
@@ -749,7 +712,7 @@ export default async function HomePage() {
 
               <div className="flex flex-col gap-3 rounded-2xl border border-slate-700 bg-slate-900/80 p-3 shadow-2xl backdrop-blur sm:flex-row">
                 <input
-                  id="homepage-search"
+                  id="petrohub-home-search"
                   type="search"
                   name="q"
                   required
@@ -906,15 +869,24 @@ export default async function HomePage() {
               className="group mt-8 grid overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 transition hover:border-orange-500/50 lg:grid-cols-2"
             >
               {featuredArticle.featuredImage ? (
-                <img
-                  src={
-                    featuredArticle.featuredImage
-                  }
-                  alt={
-                    featuredArticle.title
-                  }
-                  className="h-full min-h-[320px] w-full object-cover"
-                />
+                <div className="relative min-h-[320px] overflow-hidden bg-slate-800">
+                  <Image
+                    src={
+                      featuredArticle.featuredImage
+                    }
+                    alt={
+                      featuredArticle.title
+                    }
+                    width={
+                      1200
+                    }
+                    height={
+                      800
+                    }
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="h-full min-h-[320px] w-full object-cover"
+                  />
+                </div>
               ) : (
                 <div className="flex min-h-[320px] items-center justify-center bg-slate-800 text-2xl font-extrabold text-slate-600">
                   PetroHub
@@ -954,8 +926,10 @@ export default async function HomePage() {
                   </span>
 
                   <span className="text-slate-500">
-                    {featuredArticle.views ??
-                      0}{" "}
+                    {
+                      featuredArticle.views ??
+                      0
+                    }{" "}
                     views
                   </span>
                 </div>
@@ -1010,7 +984,7 @@ export default async function HomePage() {
                   </p>
 
                   <p className="mt-5 text-sm font-semibold text-orange-400">
-                    Explore category →
+                    Explore category
                   </p>
                 </Link>
               )
@@ -1138,13 +1112,6 @@ export default async function HomePage() {
                 </Link>
 
                 <Link
-                  href="/articles"
-                  className="rounded-xl border border-slate-700 px-7 py-3.5 text-center font-bold text-slate-300 transition hover:border-orange-500 hover:text-orange-400"
-                >
-                  Read Articles
-                </Link>
-
-                <Link
                   href="/search"
                   className="rounded-xl border border-slate-700 px-7 py-3.5 text-center font-bold text-slate-300 transition hover:border-orange-500 hover:text-orange-400"
                 >
@@ -1169,11 +1136,8 @@ function LibraryCard({
   resource,
   showStats = false,
 }: {
-  resource:
-    LibraryResource;
-
-  showStats?:
-    boolean;
+  resource: LibraryResource;
+  showStats?: boolean;
 }) {
   return (
     <Link
@@ -1182,14 +1146,20 @@ function LibraryCard({
     >
       <div className="relative overflow-hidden bg-slate-800">
         {resource.coverImage ? (
-          <img
+          <Image
             src={
               resource.coverImage
             }
             alt={
               resource.title
             }
-            loading="lazy"
+            width={
+              600
+            }
+            height={
+              800
+            }
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             className="aspect-[3/4] w-full object-cover transition duration-300 group-hover:scale-[1.03]"
           />
         ) : (
@@ -1250,16 +1220,20 @@ function LibraryCard({
         )}
 
         {showStats && (
-          <div className="mt-5 flex flex-wrap gap-4 border-t border-slate-800 pt-4 text-xs text-slate-500">
+          <div className="mt-5 flex gap-4 border-t border-slate-800 pt-4 text-xs text-slate-500">
             <span>
-              {resource.views ??
-                0}{" "}
+              {
+                resource.views ??
+                0
+              }{" "}
               views
             </span>
 
             <span>
-              {resource.downloads ??
-                0}{" "}
+              {
+                resource.downloads ??
+                0
+              }{" "}
               downloads
             </span>
           </div>
@@ -1284,20 +1258,11 @@ function SectionHeader({
   href,
   linkLabel,
 }: {
-  eyebrow:
-    string;
-
-  title:
-    string;
-
-  description:
-    string;
-
-  href:
-    string;
-
-  linkLabel:
-    string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  href: string;
+  linkLabel: string;
 }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-5">
@@ -1343,11 +1308,8 @@ function HeroStat({
   value,
   label,
 }: {
-  value:
-    number;
-
-  label:
-    string;
+  value: number;
+  label: string;
 }) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
@@ -1374,11 +1336,8 @@ function EmptyState({
   title,
   description,
 }: {
-  title:
-    string;
-
-  description:
-    string;
+  title: string;
+  description: string;
 }) {
   return (
     <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-10">
@@ -1402,8 +1361,7 @@ function EmptyState({
 ========================================================= */
 
 function getContentTypeLabel(
-  contentType?:
-    string
+  contentType?: string
 ) {
   switch (
     contentType
@@ -1420,7 +1378,10 @@ function getContentTypeLabel(
     case "download":
       return "Download";
 
-    default:
+    case "book":
       return "Book";
+
+    default:
+      return "Resource";
   }
 }
