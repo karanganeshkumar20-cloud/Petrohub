@@ -98,7 +98,7 @@ export default async function ArticleCard({
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-slate-800">
-            <span className="text-xl font-extrabold text-slate-600">
+            <span className="text-xl font-extrabold text-slate-400">
               PetroHub
             </span>
           </div>
@@ -107,8 +107,8 @@ export default async function ArticleCard({
         {/* FEATURED BADGE */}
 
         {article.featured && (
-          <span className="absolute left-3 top-3 rounded-full bg-orange-500 px-3 py-1 text-xs font-bold text-white">
-            ★ Featured
+          <span className="absolute left-3 top-3 rounded-full bg-orange-500 px-3 py-1 text-xs font-bold text-slate-950">
+            â˜… Featured
           </span>
         )}
       </div>
@@ -123,7 +123,7 @@ export default async function ArticleCard({
             {article.category}
           </span>
 
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-slate-400">
             {article.views ?? 0} views
           </span>
         </div>
@@ -147,7 +147,7 @@ export default async function ArticleCard({
         <div className="mt-auto pt-6">
           <div className="border-t border-slate-800 pt-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-slate-400">
                 {article.author && (
                   <span>
                     {article.author}
@@ -157,7 +157,7 @@ export default async function ArticleCard({
                 {article.author &&
                   article.createdAt && (
                     <span>
-                      {" "}•{" "}
+                      {" "}â€¢{" "}
                     </span>
                   )}
 
@@ -171,7 +171,7 @@ export default async function ArticleCard({
               </div>
 
               <span className="text-sm font-semibold text-orange-400">
-                Read article →
+                Read article â†’
               </span>
             </div>
           </div>

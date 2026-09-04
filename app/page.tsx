@@ -718,12 +718,12 @@ export default async function HomePage() {
                   required
                   autoComplete="off"
                   placeholder="Search HIRA, OSHA, LOTO, drilling, reservoir..."
-                  className="min-w-0 flex-1 rounded-xl bg-slate-950 px-5 py-4 text-white outline-none placeholder:text-slate-500 focus:ring-1 focus:ring-orange-500"
+                  className="min-w-0 flex-1 rounded-xl bg-slate-950 px-5 py-4 text-white outline-none placeholder:text-slate-400 focus:ring-1 focus:ring-orange-500"
                 />
 
                 <button
                   type="submit"
-                  className="rounded-xl bg-orange-500 px-7 py-4 font-bold text-white transition hover:bg-orange-600"
+                  className="rounded-xl bg-orange-500 px-7 py-4 font-bold text-slate-950 transition hover:bg-orange-600"
                 >
                   Search PetroHub
                 </button>
@@ -765,7 +765,7 @@ export default async function HomePage() {
             <div className="mt-9 flex flex-wrap gap-4">
               <Link
                 href="/articles"
-                className="rounded-xl bg-orange-500 px-7 py-3.5 font-bold text-white transition hover:bg-orange-600"
+                className="rounded-xl bg-orange-500 px-7 py-3.5 font-bold text-slate-950 transition hover:bg-orange-600"
               >
                 Explore Articles
               </Link>
@@ -826,7 +826,7 @@ export default async function HomePage() {
               title="Engineering Library"
               description="Selected books, manuals, standards and technical resources from the PetroHub Library."
               href="/library"
-              linkLabel="Explore Library →"
+              linkLabel="Explore Library â†’"
             />
 
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -888,7 +888,7 @@ export default async function HomePage() {
                   />
                 </div>
               ) : (
-                <div className="flex min-h-[320px] items-center justify-center bg-slate-800 text-2xl font-extrabold text-slate-600">
+                <div className="flex min-h-[320px] items-center justify-center bg-slate-800 text-2xl font-extrabold text-slate-400">
                   PetroHub
                 </div>
               )}
@@ -901,7 +901,7 @@ export default async function HomePage() {
                     }
                   </span>
 
-                  <span className="rounded-full border border-slate-700 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <span className="rounded-full border border-slate-700 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-400">
                     Article
                   </span>
                 </div>
@@ -922,10 +922,10 @@ export default async function HomePage() {
 
                 <div className="mt-7 flex flex-wrap items-center gap-5 text-sm">
                   <span className="font-semibold text-orange-400">
-                    Read article →
+                    Read article â†’
                   </span>
 
-                  <span className="text-slate-500">
+                  <span className="text-slate-400">
                     {
                       featuredArticle.views ??
                       0
@@ -950,7 +950,7 @@ export default async function HomePage() {
             title="Explore Engineering Categories"
             description="Find knowledge and resources based on your engineering discipline."
             href="/categories"
-            linkLabel="View all categories →"
+            linkLabel="View all categories â†’"
           />
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -972,8 +972,8 @@ export default async function HomePage() {
                       }
                     </h3>
 
-                    <span className="text-xl text-slate-600 transition group-hover:text-orange-400">
-                      →
+                    <span className="text-xl text-slate-400 transition group-hover:text-orange-400">
+                      â†’
                     </span>
                   </div>
 
@@ -1004,7 +1004,7 @@ export default async function HomePage() {
             title="Latest Articles"
             description="Practical engineering knowledge, safety guidance and technical learning from PetroHub."
             href="/articles"
-            linkLabel="Browse all articles →"
+            linkLabel="Browse all articles â†’"
           />
 
           {articles.length ===
@@ -1047,7 +1047,7 @@ export default async function HomePage() {
               title="Most Viewed in the Library"
               description="Discover the engineering resources PetroHub readers are exploring."
               href="/library"
-              linkLabel="Browse Library →"
+              linkLabel="Browse Library â†’"
             />
 
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -1106,7 +1106,7 @@ export default async function HomePage() {
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
                 <Link
                   href="/library"
-                  className="rounded-xl bg-orange-500 px-7 py-3.5 text-center font-bold text-white transition hover:bg-orange-600"
+                  className="rounded-xl bg-orange-500 px-7 py-3.5 text-center font-bold text-slate-950 transition hover:bg-orange-600"
                 >
                   Open Library
                 </Link>
@@ -1163,14 +1163,14 @@ function LibraryCard({
             className="aspect-[3/4] w-full object-cover transition duration-300 group-hover:scale-[1.03]"
           />
         ) : (
-          <div className="flex aspect-[3/4] items-center justify-center text-xl font-bold text-slate-600">
+          <div className="flex aspect-[3/4] items-center justify-center text-xl font-bold text-slate-400">
             PetroHub
           </div>
         )}
 
         {resource.featured && (
           <span className="absolute left-3 top-3 rounded-full bg-yellow-500 px-3 py-1 text-xs font-bold text-slate-950">
-            ★ Featured
+            â˜… Featured
           </span>
         )}
 
@@ -1189,11 +1189,11 @@ function LibraryCard({
             }
           </span>
 
-          <span className="text-xs text-slate-600">
-            •
+          <span className="text-xs text-slate-400">
+            â€¢
           </span>
 
-          <span className="text-xs font-semibold text-slate-500">
+          <span className="text-xs font-semibold text-slate-400">
             {resource.resourceType ===
             "hosted"
               ? "Hosted PDF"
@@ -1211,7 +1211,7 @@ function LibraryCard({
         </h3>
 
         {resource.author && (
-          <p className="mt-2 line-clamp-1 text-sm text-slate-500">
+          <p className="mt-2 line-clamp-1 text-sm text-slate-400">
             By{" "}
             {
               resource.author
@@ -1220,7 +1220,7 @@ function LibraryCard({
         )}
 
         {showStats && (
-          <div className="mt-5 flex gap-4 border-t border-slate-800 pt-4 text-xs text-slate-500">
+          <div className="mt-5 flex gap-4 border-t border-slate-800 pt-4 text-xs text-slate-400">
             <span>
               {
                 resource.views ??
@@ -1240,7 +1240,7 @@ function LibraryCard({
         )}
 
         <p className="mt-5 text-sm font-semibold text-orange-400">
-          View resource →
+          View resource â†’
         </p>
       </div>
     </Link>
@@ -1319,7 +1319,7 @@ function HeroStat({
         }
       </p>
 
-      <p className="mt-2 text-sm text-slate-500">
+      <p className="mt-2 text-sm text-slate-400">
         {
           label
         }

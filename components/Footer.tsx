@@ -82,7 +82,7 @@ export default function Footer() {
               href="/"
               className="inline-flex items-center gap-3"
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500 text-xl font-black text-white">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500 text-xl font-black text-slate-950">
                 P
               </div>
 
@@ -94,7 +94,7 @@ export default function Footer() {
                   </span>
                 </p>
 
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                   Engineering Knowledge
                 </p>
               </div>
@@ -157,7 +157,7 @@ export default function Footer() {
             Resource Notice
           </p>
 
-          <p className="mt-3 max-w-5xl text-sm leading-6 text-slate-500">
+          <p className="mt-3 max-w-5xl text-sm leading-6 text-slate-400">
             PetroHub provides engineering
             information and resources for
             educational and professional
@@ -175,8 +175,8 @@ export default function Footer() {
 
       <div className="border-t border-slate-800">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-6 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-slate-500">
-            © {currentYear} PetroHub.
+          <p className="text-slate-400">
+            Â© {currentYear} PetroHub.
             All rights reserved.
           </p>
 
@@ -213,7 +213,7 @@ export default function Footer() {
               href="/"
               className="font-semibold text-orange-400 transition hover:text-orange-300"
             >
-              Back to top ↑
+              Back to top â†‘
             </Link>
           </div>
         </div>
@@ -268,7 +268,7 @@ function FooterBadge({
   children: React.ReactNode;
 }) {
   return (
-    <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-500">
+    <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-400">
       {children}
     </span>
   );

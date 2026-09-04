@@ -110,7 +110,7 @@ export default function Navbar() {
           href="/"
           className="group flex shrink-0 items-center gap-3"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500 text-lg font-black text-white shadow-lg shadow-orange-500/10">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500 text-lg font-black text-slate-950 shadow-lg shadow-orange-500/10">
             P
           </div>
 
@@ -122,7 +122,7 @@ export default function Navbar() {
               </span>
             </p>
 
-            <p className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 lg:block">
+            <p className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 lg:block">
               Engineering Knowledge
             </p>
           </div>
@@ -211,7 +211,7 @@ export default function Navbar() {
                       "/",
                   })
                 }
-                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
+                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-orange-600"
               >
                 Logout
               </button>
@@ -227,7 +227,7 @@ export default function Navbar() {
 
               <Link
                 href="/register"
-                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
+                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-orange-600"
               >
                 Join Free
               </Link>
@@ -315,7 +315,7 @@ export default function Navbar() {
                 {/* USER INFO */}
 
                 <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                     Signed in as
                   </p>
 
@@ -364,7 +364,7 @@ export default function Navbar() {
                         "/",
                     })
                   }
-                  className="w-full rounded-xl bg-orange-500 px-4 py-3 font-semibold text-white transition hover:bg-orange-600"
+                  className="w-full rounded-xl bg-orange-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-orange-600"
                 >
                   Logout
                 </button>
@@ -380,7 +380,7 @@ export default function Navbar() {
 
                 <Link
                   href="/register"
-                  className="rounded-xl bg-orange-500 px-4 py-3 text-center font-semibold text-white transition hover:bg-orange-600"
+                  className="rounded-xl bg-orange-500 px-4 py-3 text-center font-semibold text-slate-950 transition hover:bg-orange-600"
                 >
                   Join Free
                 </Link>
