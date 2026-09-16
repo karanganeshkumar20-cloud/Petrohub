@@ -16,9 +16,9 @@ import {
   usePathname,
 } from "next/navigation";
 
-/* =========================
-   NAVIGATION ITEMS
-========================= */
+/* =========================================================
+   NAVIGATION
+========================================================= */
 
 const navigation = [
   {
@@ -41,7 +41,15 @@ const navigation = [
     name: "Search",
     href: "/search",
   },
+  {
+    name: "PetroHub AI",
+    href: "/ai",
+  },
 ];
+
+/* =========================================================
+   NAVBAR
+========================================================= */
 
 export default function Navbar() {
   const {
@@ -57,19 +65,18 @@ export default function Navbar() {
     setMobileOpen,
   ] = useState(false);
 
-  /*
-   * Close mobile menu when
-   * navigation changes.
-   */
+  /* =====================================================
+     CLOSE MOBILE MENU ON ROUTE CHANGE
+  ===================================================== */
+
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
 
-  /*
-   * Safely read role without
-   * requiring changes to the
-   * NextAuth type declaration.
-   */
+  /* =====================================================
+     USER ROLE
+  ===================================================== */
+
   const role = (
     session?.user as
       | {
@@ -81,11 +88,17 @@ export default function Navbar() {
   const isAdmin =
     role === "admin";
 
+  /* =====================================================
+     ACTIVE LINK
+  ===================================================== */
+
   function isActive(
     href: string
   ) {
     if (href === "/") {
-      return pathname === "/";
+      return (
+        pathname === "/"
+      );
     }
 
     return (
@@ -96,47 +109,128 @@ export default function Navbar() {
     );
   }
 
+  /* =====================================================
+     UI
+  ===================================================== */
+
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/95 backdrop-blur-xl">
-      {/* =========================
-          DESKTOP / MAIN NAV
-      ========================= */}
+    <header
+      className="
+        sticky
+        top-0
+        z-50
+        border-b
+        border-slate-800
+        bg-slate-950/95
+        backdrop-blur-xl
+      "
+    >
+      {/* =================================================
+          MAIN NAVBAR
+      ================================================= */}
 
-      <nav className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4">
-
-        {/* LOGO */}
+      <nav
+        className="
+          mx-auto
+          flex
+          max-w-7xl
+          items-center
+          justify-between
+          gap-4
+          px-4
+          py-4
+          sm:px-6
+        "
+      >
+        {/* ===============================================
+            LOGO
+        =============================================== */}
 
         <Link
           href="/"
-          className="group flex shrink-0 items-center gap-3"
+          className="
+            group
+            flex
+            shrink-0
+            items-center
+            gap-3
+          "
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500 text-lg font-black text-slate-950 shadow-lg shadow-orange-500/10">
+          <div
+            className="
+              flex
+              h-10
+              w-10
+              items-center
+              justify-center
+              rounded-xl
+              bg-orange-500
+              text-lg
+              font-black
+              text-white
+              shadow-lg
+              shadow-orange-500/10
+            "
+          >
             P
           </div>
 
           <div>
-            <p className="text-xl font-extrabold tracking-tight text-white transition group-hover:text-orange-400">
+            <p
+              className="
+                text-xl
+                font-extrabold
+                tracking-tight
+                text-white
+                transition
+                group-hover:text-orange-400
+              "
+            >
               Petro
+
               <span className="text-orange-500">
                 Hub
               </span>
             </p>
 
-            <p className="hidden text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 lg:block">
+            <p
+              className="
+                hidden
+                text-[10px]
+                font-semibold
+                uppercase
+                tracking-[0.18em]
+                text-slate-500
+                xl:block
+              "
+            >
               Engineering Knowledge
             </p>
           </div>
         </Link>
 
-        {/* DESKTOP LINKS */}
+        {/* ===============================================
+            DESKTOP NAVIGATION
+        =============================================== */}
 
-        <div className="hidden items-center gap-1 lg:flex">
+        <div
+          className="
+            hidden
+            items-center
+            gap-1
+            lg:flex
+          "
+        >
           {navigation.map(
             (item) => {
               const active =
                 isActive(
                   item.href
                 );
+
+              const isAI =
+                item.href ===
+                "/ai";
 
               return (
                 <Link
@@ -148,8 +242,41 @@ export default function Navbar() {
                   }
                   className={
                     active
-                      ? "rounded-lg bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-400"
-                      : "rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-900 hover:text-orange-400"
+                      ? `
+                        rounded-lg
+                        bg-orange-500/10
+                        px-3
+                        py-2
+                        text-sm
+                        font-semibold
+                        text-orange-400
+                      `
+                      : isAI
+                      ? `
+                        rounded-lg
+                        border
+                        border-orange-500/40
+                        bg-orange-500/5
+                        px-3
+                        py-2
+                        text-sm
+                        font-semibold
+                        text-orange-400
+                        transition
+                        hover:border-orange-500
+                        hover:bg-orange-500/10
+                      `
+                      : `
+                        rounded-lg
+                        px-3
+                        py-2
+                        text-sm
+                        font-semibold
+                        text-slate-300
+                        transition
+                        hover:bg-slate-900
+                        hover:text-orange-400
+                      `
                   }
                 >
                   {
@@ -161,12 +288,30 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* DESKTOP ACCOUNT */}
+        {/* ===============================================
+            DESKTOP ACCOUNT
+        =============================================== */}
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div
+          className="
+            hidden
+            shrink-0
+            items-center
+            gap-2
+            md:flex
+          "
+        >
           {status ===
           "loading" ? (
-            <div className="h-10 w-24 animate-pulse rounded-lg bg-slate-800" />
+            <div
+              className="
+                h-10
+                w-24
+                animate-pulse
+                rounded-lg
+                bg-slate-800
+              "
+            />
           ) : session ? (
             <>
               {/* ADMIN */}
@@ -178,8 +323,30 @@ export default function Navbar() {
                     pathname.startsWith(
                       "/admin"
                     )
-                      ? "rounded-lg border border-orange-500 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-400"
-                      : "rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-orange-500 hover:text-orange-400"
+                      ? `
+                        rounded-lg
+                        border
+                        border-orange-500
+                        bg-orange-500/10
+                        px-3
+                        py-2
+                        text-sm
+                        font-semibold
+                        text-orange-400
+                      `
+                      : `
+                        rounded-lg
+                        border
+                        border-slate-700
+                        px-3
+                        py-2
+                        text-sm
+                        font-semibold
+                        text-slate-300
+                        transition
+                        hover:border-orange-500
+                        hover:text-orange-400
+                      `
                   }
                 >
                   Admin
@@ -194,8 +361,30 @@ export default function Navbar() {
                   pathname.startsWith(
                     "/profile"
                   )
-                    ? "rounded-lg border border-orange-500 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-400"
-                    : "rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-white transition hover:border-orange-500 hover:text-orange-400"
+                    ? `
+                      rounded-lg
+                      border
+                      border-orange-500
+                      bg-orange-500/10
+                      px-3
+                      py-2
+                      text-sm
+                      font-semibold
+                      text-orange-400
+                    `
+                    : `
+                      rounded-lg
+                      border
+                      border-slate-700
+                      px-3
+                      py-2
+                      text-sm
+                      font-semibold
+                      text-white
+                      transition
+                      hover:border-orange-500
+                      hover:text-orange-400
+                    `
                 }
               >
                 Profile
@@ -211,23 +400,59 @@ export default function Navbar() {
                       "/",
                   })
                 }
-                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-orange-600"
+                className="
+                  rounded-lg
+                  bg-orange-500
+                  px-3
+                  py-2
+                  text-sm
+                  font-semibold
+                  text-white
+                  transition
+                  hover:bg-orange-600
+                "
               >
                 Logout
               </button>
             </>
           ) : (
             <>
+              {/* LOGIN */}
+
               <Link
                 href="/login"
-                className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-white transition hover:border-orange-500 hover:text-orange-400"
+                className="
+                  rounded-lg
+                  border
+                  border-slate-700
+                  px-3
+                  py-2
+                  text-sm
+                  font-semibold
+                  text-white
+                  transition
+                  hover:border-orange-500
+                  hover:text-orange-400
+                "
               >
                 Login
               </Link>
 
+              {/* REGISTER */}
+
               <Link
                 href="/register"
-                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-orange-600"
+                className="
+                  rounded-lg
+                  bg-orange-500
+                  px-3
+                  py-2
+                  text-sm
+                  font-semibold
+                  text-white
+                  transition
+                  hover:bg-orange-600
+                "
               >
                 Join Free
               </Link>
@@ -235,7 +460,9 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* MOBILE MENU BUTTON */}
+        {/* ===============================================
+            MOBILE MENU BUTTON
+        =============================================== */}
 
         <button
           type="button"
@@ -249,7 +476,22 @@ export default function Navbar() {
           aria-expanded={
             mobileOpen
           }
-          className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 text-slate-300 transition hover:border-orange-500 hover:text-orange-400 md:hidden"
+          className="
+            flex
+            h-10
+            w-10
+            shrink-0
+            items-center
+            justify-center
+            rounded-lg
+            border
+            border-slate-700
+            text-slate-300
+            transition
+            hover:border-orange-500
+            hover:text-orange-400
+            md:hidden
+          "
         >
           {mobileOpen ? (
             <CloseIcon />
@@ -259,15 +501,30 @@ export default function Navbar() {
         </button>
       </nav>
 
-      {/* =========================
+      {/* =================================================
           MOBILE MENU
-      ========================= */}
+      ================================================= */}
 
       {mobileOpen && (
-        <div className="border-t border-slate-800 bg-slate-950 md:hidden">
-          <div className="mx-auto max-w-7xl px-6 py-5">
-
-            {/* MOBILE LINKS */}
+        <div
+          className="
+            border-t
+            border-slate-800
+            bg-slate-950
+            md:hidden
+          "
+        >
+          <div
+            className="
+              mx-auto
+              max-w-7xl
+              px-5
+              py-5
+            "
+          >
+            {/* ===========================================
+                MOBILE LINKS
+            =========================================== */}
 
             <div className="space-y-1">
               {navigation.map(
@@ -276,6 +533,10 @@ export default function Navbar() {
                     isActive(
                       item.href
                     );
+
+                  const isAI =
+                    item.href ===
+                      "/ai";
 
                   return (
                     <Link
@@ -287,8 +548,40 @@ export default function Navbar() {
                       }
                       className={
                         active
-                          ? "block rounded-xl bg-orange-500/10 px-4 py-3 font-semibold text-orange-400"
-                          : "block rounded-xl px-4 py-3 font-semibold text-slate-300 transition hover:bg-slate-900 hover:text-orange-400"
+                          ? `
+                            block
+                            rounded-xl
+                            bg-orange-500/10
+                            px-4
+                            py-3
+                            font-semibold
+                            text-orange-400
+                          `
+                          : isAI
+                          ? `
+                            block
+                            rounded-xl
+                            border
+                            border-orange-500/30
+                            bg-orange-500/5
+                            px-4
+                            py-3
+                            font-semibold
+                            text-orange-400
+                            transition
+                            hover:bg-orange-500/10
+                          `
+                          : `
+                            block
+                            rounded-xl
+                            px-4
+                            py-3
+                            font-semibold
+                            text-slate-300
+                            transition
+                            hover:bg-slate-900
+                            hover:text-orange-400
+                          `
                       }
                     >
                       {
@@ -302,24 +595,61 @@ export default function Navbar() {
 
             {/* DIVIDER */}
 
-            <div className="my-5 border-t border-slate-800" />
+            <div
+              className="
+                my-5
+                border-t
+                border-slate-800
+              "
+            />
 
-            {/* MOBILE ACCOUNT */}
+            {/* ===========================================
+                MOBILE ACCOUNT
+            =========================================== */}
 
             {status ===
             "loading" ? (
-              <div className="h-12 animate-pulse rounded-xl bg-slate-900" />
+              <div
+                className="
+                  h-12
+                  animate-pulse
+                  rounded-xl
+                  bg-slate-900
+                "
+              />
             ) : session ? (
               <div className="space-y-3">
-
                 {/* USER INFO */}
 
-                <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                <div
+                  className="
+                    rounded-xl
+                    border
+                    border-slate-800
+                    bg-slate-900
+                    p-4
+                  "
+                >
+                  <p
+                    className="
+                      text-xs
+                      font-semibold
+                      uppercase
+                      tracking-wider
+                      text-slate-500
+                    "
+                  >
                     Signed in as
                   </p>
 
-                  <p className="mt-2 truncate font-semibold text-white">
+                  <p
+                    className="
+                      mt-2
+                      truncate
+                      font-semibold
+                      text-white
+                    "
+                  >
                     {session.user
                       ?.name ||
                       session.user
@@ -328,7 +658,21 @@ export default function Navbar() {
                   </p>
 
                   {isAdmin && (
-                    <span className="mt-2 inline-block rounded-full bg-orange-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-orange-400">
+                    <span
+                      className="
+                        mt-2
+                        inline-block
+                        rounded-full
+                        bg-orange-500/10
+                        px-3
+                        py-1
+                        text-xs
+                        font-bold
+                        uppercase
+                        tracking-wider
+                        text-orange-400
+                      "
+                    >
                       Admin
                     </span>
                   )}
@@ -339,7 +683,20 @@ export default function Navbar() {
                 {isAdmin && (
                   <Link
                     href="/admin"
-                    className="block rounded-xl border border-orange-500/40 bg-orange-500/10 px-4 py-3 text-center font-semibold text-orange-400 transition hover:bg-orange-500/20"
+                    className="
+                      block
+                      rounded-xl
+                      border
+                      border-orange-500/40
+                      bg-orange-500/10
+                      px-4
+                      py-3
+                      text-center
+                      font-semibold
+                      text-orange-400
+                      transition
+                      hover:bg-orange-500/20
+                    "
                   >
                     Admin Dashboard
                   </Link>
@@ -349,7 +706,20 @@ export default function Navbar() {
 
                 <Link
                   href="/profile"
-                  className="block rounded-xl border border-slate-700 px-4 py-3 text-center font-semibold text-white transition hover:border-orange-500 hover:text-orange-400"
+                  className="
+                    block
+                    rounded-xl
+                    border
+                    border-slate-700
+                    px-4
+                    py-3
+                    text-center
+                    font-semibold
+                    text-white
+                    transition
+                    hover:border-orange-500
+                    hover:text-orange-400
+                  "
                 >
                   My Profile
                 </Link>
@@ -364,23 +734,61 @@ export default function Navbar() {
                         "/",
                     })
                   }
-                  className="w-full rounded-xl bg-orange-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-orange-600"
+                  className="
+                    w-full
+                    rounded-xl
+                    bg-orange-500
+                    px-4
+                    py-3
+                    font-semibold
+                    text-white
+                    transition
+                    hover:bg-orange-600
+                  "
                 >
                   Logout
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
+              <div
+                className="
+                  grid
+                  grid-cols-2
+                  gap-3
+                "
+              >
                 <Link
                   href="/login"
-                  className="rounded-xl border border-slate-700 px-4 py-3 text-center font-semibold text-white transition hover:border-orange-500 hover:text-orange-400"
+                  className="
+                    rounded-xl
+                    border
+                    border-slate-700
+                    px-4
+                    py-3
+                    text-center
+                    font-semibold
+                    text-white
+                    transition
+                    hover:border-orange-500
+                    hover:text-orange-400
+                  "
                 >
                   Login
                 </Link>
 
                 <Link
                   href="/register"
-                  className="rounded-xl bg-orange-500 px-4 py-3 text-center font-semibold text-slate-950 transition hover:bg-orange-600"
+                  className="
+                    rounded-xl
+                    bg-orange-500
+                    px-4
+                    py-3
+                    text-center
+                    font-semibold
+                    text-white
+                    transition
+                    hover:bg-orange-600
+                  "
                 >
                   Join Free
                 </Link>
@@ -393,9 +801,9 @@ export default function Navbar() {
   );
 }
 
-/* =========================
+/* =========================================================
    MENU ICON
-========================= */
+========================================================= */
 
 function MenuIcon() {
   return (
@@ -407,6 +815,8 @@ function MenuIcon() {
       stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
     >
       <path d="M4 6h16" />
       <path d="M4 12h16" />
@@ -415,9 +825,9 @@ function MenuIcon() {
   );
 }
 
-/* =========================
+/* =========================================================
    CLOSE ICON
-========================= */
+========================================================= */
 
 function CloseIcon() {
   return (
@@ -429,6 +839,8 @@ function CloseIcon() {
       stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
     >
       <path d="M6 6l12 12" />
       <path d="M18 6L6 18" />
