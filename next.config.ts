@@ -10,6 +10,21 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  async redirects() {
+    return [
+      {
+        source:
+          "/articles/bernouli-equation",
+
+        destination:
+          "/articles/bernoulli-equation",
+
+        permanent:
+          true,
+      },
+    ];
+  },
+
   async headers() {
     return [
       {
@@ -28,7 +43,8 @@ const nextConfig: NextConfig = {
 
           {
             key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
+            value:
+              "strict-origin-when-cross-origin",
           },
 
           {
