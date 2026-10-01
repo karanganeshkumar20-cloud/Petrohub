@@ -38,6 +38,10 @@ const navigation = [
     href: "/categories",
   },
   {
+    name: "Formulas",
+    href: "/formulas",
+  },
+  {
     name: "Search",
     href: "/search",
   },

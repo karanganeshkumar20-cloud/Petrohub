@@ -1,11 +1,18 @@
-import type { MetadataRoute } from "next";
+import type {
+  MetadataRoute,
+} from "next";
 
-import { connectDB } from "@/lib/mongodb";
+import {
+  connectDB,
+} from "@/lib/mongodb";
 
 import Article from "@/models/Article";
-import { BookModel } from "@/models/Book";
+import {
+  BookModel,
+} from "@/models/Book";
 
-export const dynamic = "force-dynamic";
+export const dynamic =
+  "force-dynamic";
 
 /* =========================================================
    TYPES
@@ -13,8 +20,14 @@ export const dynamic = "force-dynamic";
 
 type SitemapDocument = {
   slug: string;
-  createdAt?: Date | string;
-  updatedAt?: Date | string;
+
+  createdAt?:
+    | Date
+    | string;
+
+  updatedAt?:
+    | Date
+    | string;
 };
 
 /* =========================================================
@@ -26,14 +39,21 @@ const PRODUCTION_URL =
 
 function getSiteUrl() {
   const configuredUrl =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim();
+    process.env
+      .NEXT_PUBLIC_SITE_URL
+      ?.trim();
 
   if (
-    process.env.NODE_ENV === "production" &&
+    process.env.NODE_ENV ===
+      "production" &&
     (
       !configuredUrl ||
-      configuredUrl.includes("localhost") ||
-      configuredUrl.includes("127.0.0.1")
+      configuredUrl.includes(
+        "localhost"
+      ) ||
+      configuredUrl.includes(
+        "127.0.0.1"
+      )
     )
   ) {
     return PRODUCTION_URL;
@@ -42,7 +62,10 @@ function getSiteUrl() {
   return (
     configuredUrl ||
     "http://localhost:3000"
-  ).replace(/\/+$/, "");
+  ).replace(
+    /\/+$/,
+    ""
+  );
 }
 
 /* =========================================================
@@ -50,7 +73,9 @@ function getSiteUrl() {
 ========================================================= */
 
 function getValidDate(
-  value?: Date | string
+  value?:
+    | Date
+    | string
 ): Date | undefined {
   if (!value) {
     return undefined;
@@ -59,7 +84,9 @@ function getValidDate(
   const date =
     value instanceof Date
       ? value
-      : new Date(value);
+      : new Date(
+          value
+        );
 
   if (
     Number.isNaN(
@@ -84,73 +111,101 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
      STATIC PUBLIC PAGES
   ===================================================== */
 
-  const staticPages: MetadataRoute.Sitemap = [
-    {
-      url:
-        siteUrl,
+  const staticPages:
+    MetadataRoute.Sitemap =
+    [
+      {
+        url:
+          siteUrl,
 
-      changeFrequency:
-        "daily",
+        changeFrequency:
+          "daily",
 
-      priority:
-        1,
-    },
+        priority:
+          1,
+      },
 
-    {
-      url:
-        `${siteUrl}/articles`,
+      {
+        url:
+          `${siteUrl}/articles`,
 
-      changeFrequency:
-        "daily",
+        changeFrequency:
+          "daily",
 
-      priority:
-        0.9,
-    },
+        priority:
+          0.9,
+      },
 
-    {
-      url:
-        `${siteUrl}/library`,
+      {
+        url:
+          `${siteUrl}/library`,
 
-      changeFrequency:
-        "daily",
+        changeFrequency:
+          "daily",
 
-      priority:
-        0.9,
-    },
+        priority:
+          0.9,
+      },
 
-    {
-      url:
-        `${siteUrl}/categories`,
+      {
+        url:
+          `${siteUrl}/categories`,
 
-      changeFrequency:
-        "weekly",
+        changeFrequency:
+          "weekly",
 
-      priority:
-        0.8,
-    },
+        priority:
+          0.8,
+      },
 
-    {
-      url:
-        `${siteUrl}/about`,
+      /* =========================
+         FORMULAS
+      ========================= */
 
-      changeFrequency:
-        "monthly",
+      {
+        url:
+          `${siteUrl}/formulas`,
 
-      priority:
-        0.6,
-    },
+        changeFrequency:
+          "weekly",
 
-    {
-      url:
-        `${siteUrl}/contact`,
+        priority:
+          0.9,
+      },
 
-      changeFrequency:
-        "monthly",
+      {
+        url:
+          `${siteUrl}/formulas/bernoulli-equation`,
 
-      priority:
-        0.5,
-    },
-  ];
+        changeFrequency:
+          "monthly",
+
+        priority:
+          0.8,
+      },
+
+      {
+        url:
+          `${siteUrl}/about`,
+
+        changeFrequency:
+          "monthly",
+
+        priority:
+          0.6,
+      },
+
+      {
+        url:
+          `${siteUrl}/contact`,
+
+        changeFrequency:
+          "monthly",
+
+        priority:
+          0.5,
+      },
+    ];
 
   /* =====================================================
      CATEGORY PAGES
@@ -167,7 +222,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "geology",
   ];
 
-  const categoryPages: MetadataRoute.Sitemap =
+  const categoryPages:
+    MetadataRoute.Sitemap =
     categorySlugs.map(
       (
         slug
@@ -187,10 +243,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
      DYNAMIC CONTENT
   ===================================================== */
 
-  let articlePages: MetadataRoute.Sitemap =
+  let articlePages:
+    MetadataRoute.Sitemap =
     [];
 
-  let libraryPages: MetadataRoute.Sitemap =
+  let libraryPages:
+    MetadataRoute.Sitemap =
     [];
 
   try {
@@ -199,31 +257,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const [
       articleDocuments,
       bookDocuments,
-    ] = await Promise.all([
-      Article.find({
-        status:
-          "Published",
-      })
-        .select(
-          "slug createdAt updatedAt"
-        )
-        .lean(),
+    ] =
+      await Promise.all([
+        Article.find({
+          status:
+            "Published",
+        })
+          .select(
+            "slug createdAt updatedAt"
+          )
+          .lean(),
 
-      BookModel.find({
-        status:
-          "Published",
-      })
-        .select(
-          "slug createdAt updatedAt"
-        )
-        .lean(),
-    ]);
+        BookModel.find({
+          status:
+            "Published",
+        })
+          .select(
+            "slug createdAt updatedAt"
+          )
+          .lean(),
+      ]);
 
     const articles =
-      articleDocuments as unknown as SitemapDocument[];
+      articleDocuments as unknown as
+        SitemapDocument[];
 
     const books =
-      bookDocuments as unknown as SitemapDocument[];
+      bookDocuments as unknown as
+        SitemapDocument[];
 
     /* ===================================================
        ARTICLES
