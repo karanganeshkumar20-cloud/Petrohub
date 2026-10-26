@@ -21,6 +21,10 @@ type RouteContext = {
   }>;
 };
 
+/* =========================================================
+   TRUSTED CALCULATION ENGINES
+========================================================= */
+
 const SUPPORTED_CALCULATION_KEYS = [
   "bernoulli",
   "darcy-weisbach",
@@ -28,6 +32,7 @@ const SUPPORTED_CALCULATION_KEYS = [
   "ecd",
   "annular-velocity",
   "initial-circulating-pressure",
+  "darcy-linear-flow",
 ];
 
 /* =========================================================
@@ -299,6 +304,12 @@ export async function PUT(
       "Published"
         ? "Published"
         : "Draft";
+
+    /*
+      Public publishing is only
+      permitted for verified formulas
+      connected to a trusted engine.
+    */
 
     if (
       requestedStatus ===

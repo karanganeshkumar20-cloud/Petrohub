@@ -1,4 +1,4 @@
-import {
+﻿import {
   NextRequest,
   NextResponse,
 } from "next/server";
@@ -24,6 +24,7 @@ const SUPPORTED_CALCULATION_KEYS = [
   "ecd",
   "annular-velocity",
   "initial-circulating-pressure",
+  "darcy-linear-flow",
 ];
 
 /* =========================================================
@@ -82,7 +83,7 @@ function cleanStringArray(
 }
 
 /* =========================================================
-   GET ALL FORMULAS Ã¢â‚¬â€ ADMIN
+   GET ALL FORMULAS ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ADMIN
 ========================================================= */
 
 export async function GET() {
@@ -484,3 +485,5 @@ export async function POST(
     );
   }
 }
+
+
