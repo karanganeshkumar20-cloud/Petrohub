@@ -1,4 +1,4 @@
-﻿import {
+import {
   NextRequest,
   NextResponse,
 } from "next/server";
@@ -83,7 +83,7 @@ function cleanStringArray(
 }
 
 /* =========================================================
-   GET ALL FORMULAS ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ADMIN
+   GET ALL FORMULAS
 ========================================================= */
 
 export async function GET() {
@@ -485,5 +485,3 @@ export async function POST(
     );
   }
 }
-
-

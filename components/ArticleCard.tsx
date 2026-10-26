@@ -1,4 +1,4 @@
-import Image from "next/image";
+﻿import Image from "next/image";
 import Link from "next/link";
 
 import { connectDB } from "@/lib/mongodb";
@@ -108,7 +108,7 @@ export default async function ArticleCard({
 
         {article.featured && (
           <span className="absolute left-3 top-3 rounded-full bg-orange-500 px-3 py-1 text-xs font-bold text-slate-950">
-            â˜… Featured
+            &#9733; Featured
           </span>
         )}
       </div>
@@ -157,7 +157,7 @@ export default async function ArticleCard({
                 {article.author &&
                   article.createdAt && (
                     <span>
-                      {" "}â€¢{" "}
+                      {" "}&bull;{" "}
                     </span>
                   )}
 
@@ -171,7 +171,7 @@ export default async function ArticleCard({
               </div>
 
               <span className="text-sm font-semibold text-orange-400">
-                Read article â†’
+                Read article &rarr;
               </span>
             </div>
           </div>

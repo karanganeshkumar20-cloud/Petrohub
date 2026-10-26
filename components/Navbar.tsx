@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useEffect,
@@ -17,7 +17,7 @@ import {
 } from "next/navigation";
 
 /* =========================================================
-   NAVIGATION
+   PRIMARY NAVIGATION
 ========================================================= */
 
 const navigation = [
@@ -40,14 +40,6 @@ const navigation = [
   {
     name: "Formulas",
     href: "/formulas",
-  },
-  {
-    name: "Search",
-    href: "/search",
-  },
-  {
-    name: "PetroHub AI",
-    href: "/ai",
   },
 ];
 
@@ -78,6 +70,34 @@ export default function Navbar() {
   }, [pathname]);
 
   /* =====================================================
+     ESCAPE KEY
+  ===================================================== */
+
+  useEffect(() => {
+    function handleEscape(
+      event: KeyboardEvent
+    ) {
+      if (
+        event.key === "Escape"
+      ) {
+        setMobileOpen(false);
+      }
+    }
+
+    window.addEventListener(
+      "keydown",
+      handleEscape
+    );
+
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleEscape
+      );
+    };
+  }, []);
+
+  /* =====================================================
      USER ROLE
   ===================================================== */
 
@@ -100,9 +120,7 @@ export default function Navbar() {
     href: string
   ) {
     if (href === "/") {
-      return (
-        pathname === "/"
-      );
+      return pathname === "/";
     }
 
     return (
@@ -124,38 +142,37 @@ export default function Navbar() {
         top-0
         z-50
         border-b
-        border-slate-800
-        bg-slate-950/95
+        border-slate-800/80
+        bg-slate-950/90
         backdrop-blur-xl
       "
     >
-      {/* =================================================
-          MAIN NAVBAR
-      ================================================= */}
-
       <nav
+        aria-label="Primary navigation"
         className="
           mx-auto
           flex
+          h-[72px]
           max-w-7xl
           items-center
           justify-between
           gap-4
           px-4
-          py-4
           sm:px-6
         "
       >
-        {/* ===============================================
-            LOGO
-        =============================================== */}
+        {/* =================================================
+            BRAND
+        ================================================= */}
 
         <Link
           href="/"
+          aria-label="PetroHub home"
           className="
             group
             flex
-            shrink-0
+            min-w-0
+            shrink
             items-center
             gap-3
           "
@@ -165,33 +182,34 @@ export default function Navbar() {
               flex
               h-10
               w-10
+              shrink-0
               items-center
               justify-center
               rounded-xl
               bg-orange-500
               text-lg
               font-black
-              text-white
+              text-slate-950
               shadow-lg
               shadow-orange-500/10
+              transition
+              group-hover:bg-orange-400
             "
           >
             P
           </div>
 
-          <div>
+          <div className="min-w-0 leading-none">
             <p
               className="
+                truncate
                 text-xl
                 font-extrabold
                 tracking-tight
                 text-white
-                transition
-                group-hover:text-orange-400
               "
             >
               Petro
-
               <span className="text-orange-500">
                 Hub
               </span>
@@ -199,13 +217,15 @@ export default function Navbar() {
 
             <p
               className="
+                mt-1
                 hidden
-                text-[10px]
+                truncate
+                text-[9px]
                 font-semibold
                 uppercase
-                tracking-[0.18em]
+                tracking-[0.2em]
                 text-slate-500
-                xl:block
+                sm:block
               "
             >
               Engineering Knowledge
@@ -213,16 +233,16 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* ===============================================
+        {/* =================================================
             DESKTOP NAVIGATION
-        =============================================== */}
+        ================================================= */}
 
         <div
           className="
             hidden
             items-center
             gap-1
-            lg:flex
+            xl:flex
           "
         >
           {navigation.map(
@@ -232,17 +252,14 @@ export default function Navbar() {
                   item.href
                 );
 
-              const isAI =
-                item.href ===
-                "/ai";
-
               return (
                 <Link
-                  key={
-                    item.href
-                  }
-                  href={
-                    item.href
+                  key={item.href}
+                  href={item.href}
+                  aria-current={
+                    active
+                      ? "page"
+                      : undefined
                   }
                   className={
                     active
@@ -255,21 +272,6 @@ export default function Navbar() {
                         font-semibold
                         text-orange-400
                       `
-                      : isAI
-                      ? `
-                        rounded-lg
-                        border
-                        border-orange-500/40
-                        bg-orange-500/5
-                        px-3
-                        py-2
-                        text-sm
-                        font-semibold
-                        text-orange-400
-                        transition
-                        hover:border-orange-500
-                        hover:bg-orange-500/10
-                      `
                       : `
                         rounded-lg
                         px-3
@@ -279,22 +281,20 @@ export default function Navbar() {
                         text-slate-300
                         transition
                         hover:bg-slate-900
-                        hover:text-orange-400
+                        hover:text-white
                       `
                   }
                 >
-                  {
-                    item.name
-                  }
+                  {item.name}
                 </Link>
               );
             }
           )}
         </div>
 
-        {/* ===============================================
-            DESKTOP ACCOUNT
-        =============================================== */}
+        {/* =================================================
+            DESKTOP ACTIONS
+        ================================================= */}
 
         <div
           className="
@@ -302,9 +302,100 @@ export default function Navbar() {
             shrink-0
             items-center
             gap-2
-            md:flex
+            xl:flex
           "
         >
+          {/* SEARCH */}
+
+          <Link
+            href="/search"
+            aria-label="Search PetroHub"
+            title="Search PetroHub"
+            className={
+              pathname.startsWith(
+                "/search"
+              )
+                ? `
+                  flex
+                  h-10
+                  w-10
+                  items-center
+                  justify-center
+                  rounded-lg
+                  border
+                  border-orange-500
+                  bg-orange-500/10
+                  text-orange-400
+                `
+                : `
+                  flex
+                  h-10
+                  w-10
+                  items-center
+                  justify-center
+                  rounded-lg
+                  border
+                  border-slate-700
+                  text-slate-300
+                  transition
+                  hover:border-orange-500
+                  hover:text-orange-400
+                `
+            }
+          >
+            <SearchIcon />
+          </Link>
+
+          {/* PETROHUB AI */}
+
+          <Link
+            href="/ai"
+            className={
+              pathname.startsWith(
+                "/ai"
+              )
+                ? `
+                  flex
+                  items-center
+                  gap-2
+                  rounded-lg
+                  border
+                  border-orange-500
+                  bg-orange-500/10
+                  px-3
+                  py-2
+                  text-sm
+                  font-semibold
+                  text-orange-400
+                `
+                : `
+                  flex
+                  items-center
+                  gap-2
+                  rounded-lg
+                  border
+                  border-orange-500/40
+                  bg-orange-500/5
+                  px-3
+                  py-2
+                  text-sm
+                  font-semibold
+                  text-orange-400
+                  transition
+                  hover:border-orange-500
+                  hover:bg-orange-500/10
+                `
+            }
+          >
+            <SparklesIcon />
+
+            <span>
+              PetroHub AI
+            </span>
+          </Link>
+
+          {/* ACCOUNT */}
+
           {status ===
           "loading" ? (
             <div
@@ -318,8 +409,6 @@ export default function Navbar() {
             />
           ) : session ? (
             <>
-              {/* ADMIN */}
-
               {isAdmin && (
                 <Link
                   href="/admin"
@@ -357,8 +446,6 @@ export default function Navbar() {
                 </Link>
               )}
 
-              {/* PROFILE */}
-
               <Link
                 href="/profile"
                 className={
@@ -394,8 +481,6 @@ export default function Navbar() {
                 Profile
               </Link>
 
-              {/* LOGOUT */}
-
               <button
                 type="button"
                 onClick={() =>
@@ -411,9 +496,9 @@ export default function Navbar() {
                   py-2
                   text-sm
                   font-semibold
-                  text-white
+                  text-slate-950
                   transition
-                  hover:bg-orange-600
+                  hover:bg-orange-400
                 "
               >
                 Logout
@@ -421,8 +506,6 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              {/* LOGIN */}
-
               <Link
                 href="/login"
                 className="
@@ -442,20 +525,18 @@ export default function Navbar() {
                 Login
               </Link>
 
-              {/* REGISTER */}
-
               <Link
                 href="/register"
                 className="
                   rounded-lg
                   bg-orange-500
-                  px-3
+                  px-4
                   py-2
                   text-sm
-                  font-semibold
-                  text-white
+                  font-bold
+                  text-slate-950
                   transition
-                  hover:bg-orange-600
+                  hover:bg-orange-400
                 "
               >
                 Join Free
@@ -464,9 +545,9 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* ===============================================
-            MOBILE MENU BUTTON
-        =============================================== */}
+        {/* =================================================
+            MOBILE / TABLET MENU BUTTON
+        ================================================= */}
 
         <button
           type="button"
@@ -476,25 +557,34 @@ export default function Navbar() {
                 !current
             )
           }
-          aria-label="Toggle navigation menu"
+          aria-label={
+            mobileOpen
+              ? "Close navigation menu"
+              : "Open navigation menu"
+          }
           aria-expanded={
             mobileOpen
           }
+          aria-controls="petrohub-mobile-menu"
           className="
+            relative
+            z-[60]
             flex
-            h-10
-            w-10
+            h-11
+            w-11
             shrink-0
             items-center
             justify-center
-            rounded-lg
+            rounded-xl
             border
-            border-slate-700
-            text-slate-300
+            border-orange-500
+            bg-orange-500
+            text-slate-950
+            shadow-lg
+            shadow-orange-500/20
             transition
-            hover:border-orange-500
-            hover:text-orange-400
-            md:hidden
+            hover:bg-orange-400
+            xl:hidden
           "
         >
           {mobileOpen ? (
@@ -506,29 +596,56 @@ export default function Navbar() {
       </nav>
 
       {/* =================================================
-          MOBILE MENU
+          MOBILE / TABLET MENU
       ================================================= */}
 
       {mobileOpen && (
         <div
+          id="petrohub-mobile-menu"
           className="
             border-t
             border-slate-800
             bg-slate-950
-            md:hidden
+            xl:hidden
           "
         >
           <div
             className="
               mx-auto
               max-w-7xl
-              px-5
+              px-4
               py-5
+              sm:px-6
             "
           >
-            {/* ===========================================
-                MOBILE LINKS
-            =========================================== */}
+            {/* SEARCH */}
+
+            <Link
+              href="/search"
+              className="
+                mb-4
+                flex
+                items-center
+                gap-3
+                rounded-xl
+                border
+                border-slate-700
+                bg-slate-900/70
+                px-4
+                py-3
+                font-semibold
+                text-slate-300
+                transition
+                hover:border-orange-500
+                hover:text-orange-400
+              "
+            >
+              <SearchIcon />
+
+              Search PetroHub
+            </Link>
+
+            {/* PRIMARY LINKS */}
 
             <div className="space-y-1">
               {navigation.map(
@@ -538,10 +655,6 @@ export default function Navbar() {
                       item.href
                     );
 
-                  const isAI =
-                    item.href ===
-                      "/ai";
-
                   return (
                     <Link
                       key={
@@ -549,6 +662,11 @@ export default function Navbar() {
                       }
                       href={
                         item.href
+                      }
+                      aria-current={
+                        active
+                          ? "page"
+                          : undefined
                       }
                       className={
                         active
@@ -561,20 +679,6 @@ export default function Navbar() {
                             font-semibold
                             text-orange-400
                           `
-                          : isAI
-                          ? `
-                            block
-                            rounded-xl
-                            border
-                            border-orange-500/30
-                            bg-orange-500/5
-                            px-4
-                            py-3
-                            font-semibold
-                            text-orange-400
-                            transition
-                            hover:bg-orange-500/10
-                          `
                           : `
                             block
                             rounded-xl
@@ -584,7 +688,7 @@ export default function Navbar() {
                             text-slate-300
                             transition
                             hover:bg-slate-900
-                            hover:text-orange-400
+                            hover:text-white
                           `
                       }
                     >
@@ -597,7 +701,32 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* DIVIDER */}
+            {/* PETROHUB AI */}
+
+            <Link
+              href="/ai"
+              className="
+                mt-3
+                flex
+                items-center
+                gap-3
+                rounded-xl
+                border
+                border-orange-500/40
+                bg-orange-500/5
+                px-4
+                py-3
+                font-semibold
+                text-orange-400
+                transition
+                hover:border-orange-500
+                hover:bg-orange-500/10
+              "
+            >
+              <SparklesIcon />
+
+              PetroHub AI
+            </Link>
 
             <div
               className="
@@ -607,9 +736,7 @@ export default function Navbar() {
               "
             />
 
-            {/* ===========================================
-                MOBILE ACCOUNT
-            =========================================== */}
+            {/* ACCOUNT */}
 
             {status ===
             "loading" ? (
@@ -623,14 +750,12 @@ export default function Navbar() {
               />
             ) : session ? (
               <div className="space-y-3">
-                {/* USER INFO */}
-
                 <div
                   className="
                     rounded-xl
                     border
                     border-slate-800
-                    bg-slate-900
+                    bg-slate-900/70
                     p-4
                   "
                 >
@@ -682,8 +807,6 @@ export default function Navbar() {
                   )}
                 </div>
 
-                {/* ADMIN */}
-
                 {isAdmin && (
                   <Link
                     href="/admin"
@@ -706,8 +829,6 @@ export default function Navbar() {
                   </Link>
                 )}
 
-                {/* PROFILE */}
-
                 <Link
                   href="/profile"
                   className="
@@ -728,8 +849,6 @@ export default function Navbar() {
                   My Profile
                 </Link>
 
-                {/* LOGOUT */}
-
                 <button
                   type="button"
                   onClick={() =>
@@ -744,10 +863,10 @@ export default function Navbar() {
                     bg-orange-500
                     px-4
                     py-3
-                    font-semibold
-                    text-white
+                    font-bold
+                    text-slate-950
                     transition
-                    hover:bg-orange-600
+                    hover:bg-orange-400
                   "
                 >
                   Logout
@@ -788,10 +907,10 @@ export default function Navbar() {
                     px-4
                     py-3
                     text-center
-                    font-semibold
-                    text-white
+                    font-bold
+                    text-slate-950
                     transition
-                    hover:bg-orange-600
+                    hover:bg-orange-400
                   "
                 >
                   Join Free
@@ -806,18 +925,70 @@ export default function Navbar() {
 }
 
 /* =========================================================
+   SEARCH ICON
+========================================================= */
+
+function SearchIcon() {
+  return (
+    <svg
+      width="19"
+      height="19"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle
+        cx="11"
+        cy="11"
+        r="8"
+      />
+
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+
+/* =========================================================
+   AI ICON
+========================================================= */
+
+function SparklesIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m12 3-1.8 4.2L6 9l4.2 1.8L12 15l1.8-4.2L18 9l-4.2-1.8L12 3Z" />
+
+      <path d="m19 15-.9 2.1L16 18l2.1.9L19 21l.9-2.1L22 18l-2.1-.9L19 15Z" />
+    </svg>
+  );
+}
+
+/* =========================================================
    MENU ICON
 ========================================================= */
 
 function MenuIcon() {
   return (
     <svg
-      width="22"
-      height="22"
+      width="24"
+      height="24"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="2.5"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
@@ -836,12 +1007,12 @@ function MenuIcon() {
 function CloseIcon() {
   return (
     <svg
-      width="22"
-      height="22"
+      width="24"
+      height="24"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="2.5"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
