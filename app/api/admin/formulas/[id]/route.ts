@@ -34,6 +34,7 @@ const SUPPORTED_CALCULATION_KEYS = [
   "initial-circulating-pressure",
   "darcy-linear-flow",
   "vogel-ipr",
+  "steady-state-radial-oil-flow",
 ];
 
 /* =========================================================

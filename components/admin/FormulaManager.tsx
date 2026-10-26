@@ -676,6 +676,10 @@ export default function FormulaManager() {
               <option value="vogel-ipr">
                 Vogel IPR
               </option>
+
+              <option value="steady-state-radial-oil-flow">
+                Steady-State Radial Oil Flow
+              </option>
             </select>
           </label>
 

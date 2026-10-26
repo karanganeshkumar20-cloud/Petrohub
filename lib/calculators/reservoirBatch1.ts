@@ -192,3 +192,101 @@ function validateNonNegative(
     );
   }
 }
+export type SteadyStateRadialOilFlowInput = {
+  permeabilityMd: number;
+  netPayFt: number;
+  reservoirPressurePsi: number;
+  flowingBottomholePressurePsi: number;
+  oilViscosityCp: number;
+  oilFormationVolumeFactor: number;
+  drainageRadiusFt: number;
+  wellboreRadiusFt: number;
+  skinFactor: number;
+};
+
+export type SteadyStateRadialOilFlowResult = {
+  productionRateStbPerDay: number;
+  productionRateM3PerDay: number;
+  pressureDrawdownPsi: number;
+  productivityIndexStbPerDayPsi: number;
+};
+
+export function calculateSteadyStateRadialOilFlow(
+  input: SteadyStateRadialOilFlowInput
+): SteadyStateRadialOilFlowResult {
+  validatePositive(input.permeabilityMd, "Permeability");
+  validatePositive(input.netPayFt, "Net pay");
+  validatePositive(input.reservoirPressurePsi, "Reservoir pressure");
+  validateNonNegative(
+    input.flowingBottomholePressurePsi,
+    "Flowing bottomhole pressure"
+  );
+  validatePositive(input.oilViscosityCp, "Oil viscosity");
+  validatePositive(
+    input.oilFormationVolumeFactor,
+    "Oil formation volume factor"
+  );
+  validatePositive(input.drainageRadiusFt, "Drainage radius");
+  validatePositive(input.wellboreRadiusFt, "Wellbore radius");
+
+  if (!Number.isFinite(input.skinFactor)) {
+    throw new Error("Skin factor must be a valid number.");
+  }
+
+  if (
+    input.flowingBottomholePressurePsi >
+    input.reservoirPressurePsi
+  ) {
+    throw new Error(
+      "Flowing bottomhole pressure cannot be greater than reservoir pressure."
+    );
+  }
+
+  if (input.drainageRadiusFt <= input.wellboreRadiusFt) {
+    throw new Error(
+      "Drainage radius must be greater than wellbore radius."
+    );
+  }
+
+  const pressureDrawdownPsi =
+    input.reservoirPressurePsi -
+    input.flowingBottomholePressurePsi;
+
+  const radialFlowTerm =
+    Math.log(
+      input.drainageRadiusFt /
+        input.wellboreRadiusFt
+    ) + input.skinFactor;
+
+  if (radialFlowTerm <= 0) {
+    throw new Error(
+      "ln(re/rw) + skin factor must be greater than zero."
+    );
+  }
+
+  const productionRateStbPerDay =
+    (0.00708 *
+      input.permeabilityMd *
+      input.netPayFt *
+      pressureDrawdownPsi) /
+    (input.oilViscosityCp *
+      input.oilFormationVolumeFactor *
+      radialFlowTerm);
+
+  const productionRateM3PerDay =
+    productionRateStbPerDay *
+    0.158987294928;
+
+  const productivityIndexStbPerDayPsi =
+    pressureDrawdownPsi > 0
+      ? productionRateStbPerDay /
+        pressureDrawdownPsi
+      : 0;
+
+  return {
+    productionRateStbPerDay,
+    productionRateM3PerDay,
+    pressureDrawdownPsi,
+    productivityIndexStbPerDayPsi,
+  };
+}
