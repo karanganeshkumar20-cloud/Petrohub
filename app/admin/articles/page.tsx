@@ -1,200 +1,694 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+type PublicationStatus =
+  | "Draft"
+  | "Published";
 
 type Article = {
   _id: string;
   title: string;
   slug: string;
   category: string;
-  status: string;
-  views: number;
-  createdAt: string;
+  status: PublicationStatus;
+  views?: number;
+  featured?: boolean;
+  author?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
+type APIResponse = {
+  success: boolean;
+  message?: string;
+  articles?: Article[];
+};
+
+const categories = [
+  "HSE",
+  "Oil & Gas",
+  "Mechanical",
+  "Civil",
+  "Electrical",
+  "Instrumentation",
+  "Process",
+  "Geology",
+];
+
 export default function AdminArticlesPage() {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [
+    articles,
+    setArticles,
+  ] =
+    useState<Article[]>([]);
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
+
+  const [
+    deletingId,
+    setDeletingId,
+  ] =
+    useState("");
+
+  const [
+    search,
+    setSearch,
+  ] =
+    useState("");
+
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] =
+    useState("All");
+
+  const [
+    categoryFilter,
+    setCategoryFilter,
+  ] =
+    useState("All");
+
+  const [
+    error,
+    setError,
+  ] =
+    useState("");
+
+  const [
+    message,
+    setMessage,
+  ] =
+    useState("");
 
   async function fetchArticles() {
     try {
-      const response = await fetch("/api/articles", {
-        cache: "no-store",
-      });
+      setLoading(true);
+      setError("");
 
-      const data = await response.json();
+      const response =
+        await fetch(
+          "/api/articles",
+          {
+            cache:
+              "no-store",
+          }
+        );
 
-      if (data.success) {
-        setArticles(data.articles);
+      const data =
+        (await response.json()) as APIResponse;
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data.message ||
+            "Unable to load articles"
+        );
       }
-    } catch (error) {
-      console.error("Failed to fetch articles:", error);
+
+      setArticles(
+        data.articles || []
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load articles"
+      );
     } finally {
       setLoading(false);
     }
   }
 
-  async function deleteArticle(id: string) {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this article?"
-    );
+  useEffect(() => {
+    void fetchArticles();
+  }, []);
 
-    if (!confirmed) return;
+  async function deleteArticle(
+    article: Article
+  ) {
+    const confirmed =
+      window.confirm(
+        `Delete "${article.title}"?\n\nThis action cannot be undone.`
+      );
+
+    if (!confirmed) {
+      return;
+    }
 
     try {
-      const response = await fetch(`/api/articles/${id}`, {
-        method: "DELETE",
-      });
+      setDeletingId(
+        article._id
+      );
 
-      const data = await response.json();
+      setError("");
+      setMessage("");
 
-      if (data.success) {
-        setArticles((currentArticles) =>
-          currentArticles.filter((article) => article._id !== id)
+      const response =
+        await fetch(
+          `/api/articles/${article._id}`,
+          {
+            method:
+              "DELETE",
+          }
         );
 
-        alert("Article deleted successfully");
-      } else {
-        alert(data.message || "Unable to delete article");
+      const data =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
+        throw new Error(
+          data.message ||
+            "Unable to delete article"
+        );
       }
-    } catch (error) {
-      console.error("Delete error:", error);
-      alert("Something went wrong");
+
+      setArticles(
+        (
+          currentArticles
+        ) =>
+          currentArticles.filter(
+            (
+              currentArticle
+            ) =>
+              currentArticle._id !==
+              article._id
+          )
+      );
+
+      setMessage(
+        "Article deleted successfully."
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to delete article"
+      );
+    } finally {
+      setDeletingId("");
     }
   }
 
-  useEffect(() => {
-    fetchArticles();
-  }, []);
+  const filteredArticles =
+    useMemo(() => {
+      const query =
+        search
+          .trim()
+          .toLowerCase();
+
+      return articles.filter(
+        (
+          article
+        ) => {
+          const matchesSearch =
+            !query ||
+            [
+              article.title,
+              article.slug,
+              article.category,
+              article.author,
+            ]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase()
+              .includes(
+                query
+              );
+
+          const matchesStatus =
+            statusFilter ===
+              "All" ||
+            article.status ===
+              statusFilter;
+
+          const matchesCategory =
+            categoryFilter ===
+              "All" ||
+            article.category ===
+              categoryFilter;
+
+          return (
+            matchesSearch &&
+            matchesStatus &&
+            matchesCategory
+          );
+        }
+      );
+    }, [
+      articles,
+      search,
+      statusFilter,
+      categoryFilter,
+    ]);
+
+  const publishedCount =
+    articles.filter(
+      (
+        article
+      ) =>
+        article.status ===
+        "Published"
+    ).length;
+
+  const draftCount =
+    articles.filter(
+      (
+        article
+      ) =>
+        article.status ===
+        "Draft"
+    ).length;
+
+  const featuredCount =
+    articles.filter(
+      (
+        article
+      ) =>
+        article.featured
+    ).length;
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-10">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
+      <div className="mx-auto max-w-7xl">
+        {/* HEADER */}
+
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <p className="text-sm font-bold uppercase tracking-[0.22em] text-orange-500">
+              PetroHub CMS
+            </p>
+
+            <h1 className="mt-3 text-4xl font-black">
               Manage Articles
             </h1>
 
-            <p className="mt-2 text-gray-600">
-              Create, edit, view, and delete PetroHub articles.
+            <p className="mt-3 max-w-2xl text-slate-400">
+              Create, review,
+              publish, feature and
+              manage PetroHub
+              engineering articles.
             </p>
           </div>
 
-          <Link
-            href="/admin/articles/new"
-            className="rounded-lg bg-blue-600 px-5 py-3 text-center font-semibold text-white hover:bg-blue-700"
-          >
-            + New Article
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/admin"
+              className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-bold text-slate-300 transition hover:border-orange-500 hover:text-white"
+            >
+              Admin Dashboard
+            </Link>
+
+            <Link
+              href="/admin/articles/new"
+              className="rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-orange-600"
+            >
+              + New Article
+            </Link>
+          </div>
         </div>
 
+        {/* STATS */}
+
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Total Articles"
+            value={
+              articles.length
+            }
+          />
+
+          <StatCard
+            label="Published"
+            value={
+              publishedCount
+            }
+          />
+
+          <StatCard
+            label="Drafts"
+            value={
+              draftCount
+            }
+          />
+
+          <StatCard
+            label="Featured"
+            value={
+              featuredCount
+            }
+          />
+        </div>
+
+        {/* FILTERS */}
+
+        <div className="mt-8 grid gap-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 md:grid-cols-3">
+          <input
+            type="search"
+            value={
+              search
+            }
+            onChange={(
+              event
+            ) =>
+              setSearch(
+                event.target.value
+              )
+            }
+            placeholder="Search title, slug, category..."
+            className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500"
+          />
+
+          <select
+            value={
+              statusFilter
+            }
+            onChange={(
+              event
+            ) =>
+              setStatusFilter(
+                event.target.value
+              )
+            }
+            className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+          >
+            <option value="All">
+              All Statuses
+            </option>
+
+            <option value="Published">
+              Published
+            </option>
+
+            <option value="Draft">
+              Draft
+            </option>
+          </select>
+
+          <select
+            value={
+              categoryFilter
+            }
+            onChange={(
+              event
+            ) =>
+              setCategoryFilter(
+                event.target.value
+              )
+            }
+            className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+          >
+            <option value="All">
+              All Categories
+            </option>
+
+            {categories.map(
+              (
+                category
+              ) => (
+                <option
+                  key={
+                    category
+                  }
+                  value={
+                    category
+                  }
+                >
+                  {category}
+                </option>
+              )
+            )}
+          </select>
+        </div>
+
+        {error && (
+          <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+            {error}
+          </div>
+        )}
+
+        {message && (
+          <div className="mt-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-300">
+            {message}
+          </div>
+        )}
+
+        {/* CONTENT */}
+
         {loading ? (
-          <div className="rounded-xl bg-white p-8 shadow-sm">
+          <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-8 text-slate-400">
             Loading articles...
           </div>
-        ) : articles.length === 0 ? (
-          <div className="rounded-xl bg-white p-8 text-center shadow-sm">
-            <p className="text-gray-600">No articles found.</p>
+        ) : filteredArticles.length ===
+          0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 p-10 text-center">
+            <p className="font-semibold text-slate-300">
+              No articles found.
+            </p>
+
+            <p className="mt-2 text-sm text-slate-500">
+              Adjust the filters or
+              create a new article.
+            </p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
-            <table className="min-w-full border-collapse">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="px-5 py-4 text-left text-sm font-semibold text-gray-700">
-                    Title
-                  </th>
+          <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="border-b border-slate-800 bg-slate-950/40">
+                  <tr>
+                    <TableHeader>
+                      Article
+                    </TableHeader>
 
-                  <th className="px-5 py-4 text-left text-sm font-semibold text-gray-700">
-                    Category
-                  </th>
+                    <TableHeader>
+                      Category
+                    </TableHeader>
 
-                  <th className="px-5 py-4 text-left text-sm font-semibold text-gray-700">
-                    Status
-                  </th>
+                    <TableHeader>
+                      Status
+                    </TableHeader>
 
-                  <th className="px-5 py-4 text-left text-sm font-semibold text-gray-700">
-                    Views
-                  </th>
+                    <TableHeader>
+                      Views
+                    </TableHeader>
 
-                  <th className="px-5 py-4 text-left text-sm font-semibold text-gray-700">
-                    Created
-                  </th>
+                    <TableHeader>
+                      Created
+                    </TableHeader>
 
-                  <th className="px-5 py-4 text-left text-sm font-semibold text-gray-700">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {articles.map((article) => (
-                  <tr
-                    key={article._id}
-                    className="border-t border-gray-200"
-                  >
-                    <td className="px-5 py-4 font-medium text-gray-900">
-                      {article.title}
-                    </td>
-
-                    <td className="px-5 py-4 text-gray-700">
-                      {article.category}
-                    </td>
-
-                    <td className="px-5 py-4">
-                      <span
-                        className={
-                          article.status === "Published"
-                            ? "rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700"
-                            : "rounded-full bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-700"
-                        }
-                      >
-                        {article.status}
-                      </span>
-                    </td>
-
-                    <td className="px-5 py-4 text-gray-700">
-                      {article.views}
-                    </td>
-
-                    <td className="px-5 py-4 text-gray-700">
-                      {new Date(article.createdAt).toLocaleDateString()}
-                    </td>
-
-                    <td className="px-5 py-4">
-                      <div className="flex flex-wrap gap-3">
-                        <Link
-                          href={`/articles/${article.slug}`}
-                          className="font-medium text-blue-600 hover:underline"
-                        >
-                          View
-                        </Link>
-
-                        <Link
-                          href={`/admin/articles/edit/${article._id}`}
-                          className="font-medium text-amber-600 hover:underline"
-                        >
-                          Edit
-                        </Link>
-
-                        <button
-                          type="button"
-                          onClick={() => deleteArticle(article._id)}
-                          className="font-medium text-red-600 hover:underline"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
+                    <TableHeader>
+                      Actions
+                    </TableHeader>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+
+                <tbody>
+                  {filteredArticles.map(
+                    (
+                      article
+                    ) => (
+                      <tr
+                        key={
+                          article._id
+                        }
+                        className="border-b border-slate-800 last:border-0 hover:bg-slate-800/30"
+                      >
+                        <td className="px-6 py-5">
+                          <div className="min-w-[260px]">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-semibold text-white">
+                                {
+                                  article.title
+                                }
+                              </p>
+
+                              {article.featured && (
+                                <span className="rounded-full bg-orange-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-orange-400">
+                                  Featured
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="mt-1 text-xs text-slate-500">
+                              {
+                                article.slug
+                              }
+                            </p>
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-5 text-sm text-slate-300">
+                          {
+                            article.category
+                          }
+                        </td>
+
+                        <td className="px-6 py-5">
+                          <StatusBadge
+                            status={
+                              article.status
+                            }
+                          />
+                        </td>
+
+                        <td className="px-6 py-5 text-sm text-slate-300">
+                          {Number(
+                            article.views ??
+                              0
+                          ).toLocaleString()}
+                        </td>
+
+                        <td className="px-6 py-5 text-sm text-slate-400">
+                          {formatDate(
+                            article.createdAt
+                          )}
+                        </td>
+
+                        <td className="px-6 py-5">
+                          <div className="flex flex-wrap gap-4">
+                            {article.status ===
+                              "Published" && (
+                              <Link
+                                href={`/articles/${article.slug}`}
+                                className="text-sm font-bold text-slate-300 transition hover:text-white"
+                              >
+                                View
+                              </Link>
+                            )}
+
+                            <Link
+                              href={`/admin/articles/edit/${article._id}`}
+                              className="text-sm font-bold text-orange-400 transition hover:text-orange-300"
+                            >
+                              Edit
+                            </Link>
+
+                            <button
+                              type="button"
+                              disabled={
+                                deletingId ===
+                                article._id
+                              }
+                              onClick={() =>
+                                deleteArticle(
+                                  article
+                                )
+                              }
+                              className="text-sm font-bold text-red-400 transition hover:text-red-300 disabled:opacity-50"
+                            >
+                              {deletingId ===
+                              article._id
+                                ? "Deleting..."
+                                : "Delete"}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
     </main>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <p className="text-sm text-slate-500">
+        {label}
+      </p>
+
+      <p className="mt-3 text-3xl font-black">
+        {value.toLocaleString()}
+      </p>
+    </div>
+  );
+}
+
+function TableHeader({
+  children,
+}: {
+  children:
+    React.ReactNode;
+}) {
+  return (
+    <th className="whitespace-nowrap px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+      {children}
+    </th>
+  );
+}
+
+function StatusBadge({
+  status,
+}: {
+  status:
+    PublicationStatus;
+}) {
+  return (
+    <span
+      className={
+        status ===
+        "Published"
+          ? "rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-400"
+          : "rounded-full bg-yellow-500/10 px-3 py-1 text-xs font-bold text-yellow-400"
+      }
+    >
+      {status}
+    </span>
+  );
+}
+
+function formatDate(
+  value?: string
+) {
+  if (!value) {
+    return "-";
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return "-";
+  }
+
+  return date.toLocaleDateString(
+    "en-IN",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }
   );
 }

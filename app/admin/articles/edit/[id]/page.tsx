@@ -1,7 +1,23 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import Link from "next/link";
+
+import {
+  useParams,
+  useRouter,
+} from "next/navigation";
+
+import RichTextEditor from "@/components/RichTextEditor";
+import ImageUpload from "@/components/ImageUpload";
+
+type PublicationStatus =
+  | "Draft"
+  | "Published";
 
 type ArticleForm = {
   title: string;
@@ -9,7 +25,8 @@ type ArticleForm = {
   content: string;
   category: string;
   tags: string;
-  status: string;
+  status:
+    PublicationStatus;
   featuredImage: string;
   source: string;
   sourceUrl: string;
@@ -18,61 +35,171 @@ type ArticleForm = {
   featured: boolean;
 };
 
+const categories = [
+  "HSE",
+  "Oil & Gas",
+  "Mechanical",
+  "Civil",
+  "Electrical",
+  "Instrumentation",
+  "Process",
+  "Geology",
+];
+
+const initialForm: ArticleForm = {
+  title: "",
+  summary: "",
+  content: "",
+  category: "",
+  tags: "",
+  status: "Draft",
+  featuredImage: "",
+  source: "PetroHub",
+  sourceUrl: "",
+  license: "",
+  author: "PetroHub Team",
+  featured: false,
+};
+
 export default function EditArticlePage() {
-  const params = useParams();
-  const router = useRouter();
+  const params =
+    useParams();
 
-  const articleId = params.id as string;
+  const router =
+    useRouter();
 
-  const [form, setForm] = useState<ArticleForm>({
-    title: "",
-    summary: "",
-    content: "",
-    category: "",
-    tags: "",
-    status: "Draft",
-    featuredImage: "",
-    source: "PetroHub",
-    sourceUrl: "",
-    license: "",
-    author: "PetroHub Team",
-    featured: false,
-  });
+  const rawArticleId =
+    params.id;
 
-  const [pageLoading, setPageLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const articleId =
+    Array.isArray(
+      rawArticleId
+    )
+      ? rawArticleId[0]
+      : String(
+          rawArticleId ||
+            ""
+        );
+
+  const [
+    form,
+    setForm,
+  ] =
+    useState<ArticleForm>(
+      initialForm
+    );
+
+  const [
+    pageLoading,
+    setPageLoading,
+  ] =
+    useState(true);
+
+  const [
+    saving,
+    setSaving,
+  ] =
+    useState(false);
+
+  const [
+    error,
+    setError,
+  ] =
+    useState("");
+
+  const [
+    message,
+    setMessage,
+  ] =
+    useState("");
 
   useEffect(() => {
     async function fetchArticle() {
       try {
-        const response = await fetch(`/api/articles/${articleId}`, {
-          cache: "no-store",
-        });
+        setPageLoading(true);
+        setError("");
 
-        const data = await response.json();
+        const response =
+          await fetch(
+            `/api/articles/${articleId}`,
+            {
+              cache:
+                "no-store",
+            }
+          );
 
-        if (!response.ok || !data.success) {
-          throw new Error(data.message || "Article not found");
+        const data =
+          await response.json();
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          throw new Error(
+            data.message ||
+              "Article not found"
+          );
         }
 
-        const article = data.article;
+        const article =
+          data.article;
 
         setForm({
-          title: article.title || "",
-          summary: article.summary || "",
-          content: article.content || "",
-          category: article.category || "",
-          tags: Array.isArray(article.tags)
-            ? article.tags.join(", ")
-            : "",
-          status: article.status || "Draft",
-          featuredImage: article.featuredImage || "",
-          source: article.source || "PetroHub",
-          sourceUrl: article.sourceUrl || "",
-          license: article.license || "",
-          author: article.author || "PetroHub Team",
-          featured: Boolean(article.featured),
+          title:
+            article.title ||
+            "",
+
+          summary:
+            article.summary ||
+            "",
+
+          content:
+            article.content ||
+            "",
+
+          category:
+            article.category ||
+            "",
+
+          tags:
+            Array.isArray(
+              article.tags
+            )
+              ? article.tags.join(
+                  ", "
+                )
+              : "",
+
+          status:
+            article.status ===
+            "Published"
+              ? "Published"
+              : "Draft",
+
+          featuredImage:
+            article.featuredImage ||
+            "",
+
+          source:
+            article.source ||
+            "PetroHub",
+
+          sourceUrl:
+            article.sourceUrl ||
+            "",
+
+          license:
+            article.license ||
+            "",
+
+          author:
+            article.author ||
+            "PetroHub Team",
+
+          featured:
+            Boolean(
+              article.featured
+            ),
         });
       } catch (err) {
         setError(
@@ -85,362 +212,618 @@ export default function EditArticlePage() {
       }
     }
 
-    if (articleId) {
-      fetchArticle();
+    if (
+      articleId
+    ) {
+      void fetchArticle();
     }
-  }, [articleId]);
+  }, [
+    articleId,
+  ]);
 
-  function updateField(
-    field: keyof ArticleForm,
-    value: string | boolean
+  function updateField<
+    K extends keyof ArticleForm
+  >(
+    field: K,
+    value: ArticleForm[K]
   ) {
-    setForm((currentForm) => ({
-      ...currentForm,
-      [field]: value,
-    }));
+    setForm(
+      (
+        current
+      ) => ({
+        ...current,
+        [field]:
+          value,
+      })
+    );
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!form.title.trim()) {
-      alert("Title is required");
-      return;
+  function validateForm() {
+    if (
+      !form.title.trim()
+    ) {
+      return "Title is required.";
     }
 
-    if (!form.category.trim()) {
-      alert("Category is required");
-      return;
+    if (
+      !form.category.trim()
+    ) {
+      return "Category is required.";
     }
 
-    if (!form.content.trim()) {
-      alert("Content is required");
+    if (
+      !form.content.trim()
+    ) {
+      return "Article content is required.";
+    }
+
+    return "";
+  }
+
+  async function updateArticle() {
+    const validationError =
+      validateForm();
+
+    if (
+      validationError
+    ) {
+      setError(
+        validationError
+      );
       return;
     }
 
     setSaving(true);
     setError("");
+    setMessage("");
 
     try {
-      const response = await fetch(`/api/articles/${articleId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...form,
-          tags: form.tags
-            .split(",")
-            .map((tag) => tag.trim())
-            .filter(Boolean),
-        }),
-      });
+      const response =
+        await fetch(
+          `/api/articles/${articleId}`,
+          {
+            method:
+              "PUT",
 
-      const data = await response.json();
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-      if (!response.ok || !data.success) {
+            body:
+              JSON.stringify({
+                ...form,
+
+                tags:
+                  form.tags
+                    .split(",")
+                    .map(
+                      (
+                        tag
+                      ) =>
+                        tag.trim()
+                    )
+                    .filter(
+                      Boolean
+                    ),
+              }),
+          }
+        );
+
+      const data =
+        await response.json();
+
+      if (
+        !response.ok ||
+        !data.success
+      ) {
         throw new Error(
-          data.message || "Unable to update article"
+          data.message ||
+            "Unable to update article"
         );
       }
 
-      alert("Article updated successfully!");
+      setMessage(
+        "Article updated successfully."
+      );
 
-      router.push("/admin/articles");
+      router.push(
+        "/admin/articles"
+      );
+
       router.refresh();
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Something went wrong"
+          : "Unable to update article"
       );
     } finally {
       setSaving(false);
     }
   }
 
-  if (pageLoading) {
+  if (
+    pageLoading
+  ) {
     return (
-      <main className="min-h-screen bg-gray-50 px-4 py-10">
-        <div className="mx-auto max-w-4xl rounded-xl bg-white p-8 shadow-sm">
-          Loading article...
+      <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
+        <div className="mx-auto max-w-6xl">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8 text-slate-400">
+            Loading article...
+          </div>
         </div>
       </main>
     );
   }
 
-  if (error && !form.title) {
+  if (
+    error &&
+    !form.title
+  ) {
     return (
-      <main className="min-h-screen bg-gray-50 px-4 py-10">
-        <div className="mx-auto max-w-4xl rounded-xl bg-white p-8 shadow-sm">
-          <h1 className="text-2xl font-bold text-red-600">
-            Unable to load article
+      <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
+        <div className="mx-auto max-w-4xl rounded-2xl border border-red-500/30 bg-red-500/10 p-8">
+          <h1 className="text-2xl font-bold text-red-300">
+            Unable to load
+            article
           </h1>
 
-          <p className="mt-3 text-gray-700">{error}</p>
+          <p className="mt-3 text-sm text-red-200">
+            {error}
+          </p>
 
-          <button
-            type="button"
-            onClick={() => router.push("/admin/articles")}
-            className="mt-6 rounded-lg bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
+          <Link
+            href="/admin/articles"
+            className="mt-6 inline-block rounded-xl bg-orange-500 px-5 py-3 font-bold text-white hover:bg-orange-600"
           >
             Back to Articles
-          </button>
+          </Link>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-10">
-      <div className="mx-auto max-w-4xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Edit Article
-          </h1>
+    <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
+      <div className="mx-auto max-w-6xl">
+        {/* HEADER */}
 
-          <p className="mt-2 text-gray-600">
-            Update the article information and content.
-          </p>
+        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.22em] text-orange-500">
+              PetroHub CMS
+            </p>
+
+            <h1 className="mt-3 text-4xl font-black">
+              Edit Article
+            </h1>
+
+            <p className="mt-3 max-w-2xl text-slate-400">
+              Update article
+              content, publication
+              state and metadata.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            {form.status ===
+              "Published" && (
+              <Link
+                href={`/articles/${articleId}`}
+                className="hidden"
+              >
+                View
+              </Link>
+            )}
+
+            <Link
+              href="/admin/articles"
+              className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-bold text-slate-300 transition hover:border-orange-500 hover:text-white"
+            >
+              Back to Articles
+            </Link>
+          </div>
         </div>
 
         <form
-          onSubmit={handleSubmit}
-          className="space-y-6 rounded-xl bg-white p-6 shadow-sm sm:p-8"
+          onSubmit={(
+            event
+          ) => {
+            event.preventDefault();
+
+            void updateArticle();
+          }}
+          className="mt-10 space-y-8 rounded-3xl border border-slate-800 bg-slate-900/70 p-6 md:p-8"
         >
+          {/* BASIC */}
+
+          <SectionTitle
+            title="Article Information"
+            description="Edit the article title, category, summary and tags."
+          />
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <Field>
+              <FieldLabel>
+                Article Title
+              </FieldLabel>
+
+              <input
+                type="text"
+                value={
+                  form.title
+                }
+                onChange={(
+                  event
+                ) =>
+                  updateField(
+                    "title",
+                    event.target.value
+                  )
+                }
+                className={
+                  inputClass
+                }
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel>
+                Category
+              </FieldLabel>
+
+              <select
+                value={
+                  form.category
+                }
+                onChange={(
+                  event
+                ) =>
+                  updateField(
+                    "category",
+                    event.target.value
+                  )
+                }
+                className={
+                  inputClass
+                }
+              >
+                <option value="">
+                  Select category
+                </option>
+
+                {categories.map(
+                  (
+                    category
+                  ) => (
+                    <option
+                      key={
+                        category
+                      }
+                      value={
+                        category
+                      }
+                    >
+                      {category}
+                    </option>
+                  )
+                )}
+              </select>
+            </Field>
+          </div>
+
+          <Field>
+            <FieldLabel>
+              Summary
+            </FieldLabel>
+
+            <textarea
+              value={
+                form.summary
+              }
+              onChange={(
+                event
+              ) =>
+                updateField(
+                  "summary",
+                  event.target.value
+                )
+              }
+              rows={4}
+              className={`${inputClass} resize-none`}
+              placeholder="Short article summary"
+            />
+          </Field>
+
+          <Field>
+            <FieldLabel>
+              Tags
+            </FieldLabel>
+
+            <input
+              type="text"
+              value={
+                form.tags
+              }
+              onChange={(
+                event
+              ) =>
+                updateField(
+                  "tags",
+                  event.target.value
+                )
+              }
+              className={
+                inputClass
+              }
+              placeholder="safety, HSE, PTW"
+            />
+
+            <p className="mt-2 text-xs text-slate-500">
+              Separate tags using
+              commas.
+            </p>
+          </Field>
+
+          {/* IMAGE */}
+
+          <div>
+            <SectionTitle
+              title="Featured Image"
+              description="Update the main image displayed with this article."
+            />
+
+            <div className="mt-5">
+              <ImageUpload
+                value={
+                  form.featuredImage
+                }
+                onChange={(
+                  url
+                ) =>
+                  updateField(
+                    "featuredImage",
+                    url
+                  )
+                }
+              />
+            </div>
+          </div>
+
+          {/* CONTENT */}
+
+          <div>
+            <SectionTitle
+              title="Article Content"
+              description="Edit the full technical article using the PetroHub rich-text editor."
+            />
+
+            <div className="mt-5">
+              <RichTextEditor
+                value={
+                  form.content
+                }
+                onChange={(
+                  html
+                ) =>
+                  updateField(
+                    "content",
+                    html
+                  )
+                }
+              />
+            </div>
+          </div>
+
+          {/* PUBLISHING */}
+
+          <div>
+            <SectionTitle
+              title="Publishing"
+              description="Control publication state, author information and attribution."
+            />
+
+            <div className="mt-5 grid gap-6 md:grid-cols-2">
+              <Field>
+                <FieldLabel>
+                  Publication Status
+                </FieldLabel>
+
+                <select
+                  value={
+                    form.status
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    updateField(
+                      "status",
+                      event.target.value as PublicationStatus
+                    )
+                  }
+                  className={
+                    inputClass
+                  }
+                >
+                  <option value="Draft">
+                    Draft
+                  </option>
+
+                  <option value="Published">
+                    Published
+                  </option>
+                </select>
+              </Field>
+
+              <Field>
+                <FieldLabel>
+                  Author
+                </FieldLabel>
+
+                <input
+                  type="text"
+                  value={
+                    form.author
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    updateField(
+                      "author",
+                      event.target.value
+                    )
+                  }
+                  className={
+                    inputClass
+                  }
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel>
+                  Source
+                </FieldLabel>
+
+                <input
+                  type="text"
+                  value={
+                    form.source
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    updateField(
+                      "source",
+                      event.target.value
+                    )
+                  }
+                  className={
+                    inputClass
+                  }
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel>
+                  Source URL
+                </FieldLabel>
+
+                <input
+                  type="url"
+                  value={
+                    form.sourceUrl
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    updateField(
+                      "sourceUrl",
+                      event.target.value
+                    )
+                  }
+                  className={
+                    inputClass
+                  }
+                  placeholder="https://example.com"
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel>
+                  License
+                </FieldLabel>
+
+                <input
+                  type="text"
+                  value={
+                    form.license
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    updateField(
+                      "license",
+                      event.target.value
+                    )
+                  }
+                  className={
+                    inputClass
+                  }
+                  placeholder="Original Content, CC BY 4.0..."
+                />
+              </Field>
+            </div>
+
+            <label className="mt-6 flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+              <input
+                type="checkbox"
+                checked={
+                  form.featured
+                }
+                onChange={(
+                  event
+                ) =>
+                  updateField(
+                    "featured",
+                    event.target.checked
+                  )
+                }
+                className="h-5 w-5"
+              />
+
+              <div>
+                <p className="font-semibold">
+                  Featured Article
+                </p>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  Highlight this
+                  article in prominent
+                  PetroHub locations.
+                </p>
+              </div>
+            </label>
+          </div>
+
           {error && (
-            <div className="rounded-lg bg-red-50 p-4 text-red-700">
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
               {error}
             </div>
           )}
 
-          <div>
-            <label className="mb-2 block font-semibold text-gray-800">
-              Title
-            </label>
-
-            <input
-              type="text"
-              value={form.title}
-              onChange={(event) =>
-                updateField("title", event.target.value)
-              }
-              className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500"
-              placeholder="Article title"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block font-semibold text-gray-800">
-              Category
-            </label>
-
-            <select
-              value={form.category}
-              onChange={(event) =>
-                updateField("category", event.target.value)
-              }
-              className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500"
-              required
-            >
-              <option value="">Select category</option>
-              <option value="HSE">HSE</option>
-              <option value="Oil & Gas">Oil & Gas</option>
-              <option value="Mechanical">Mechanical</option>
-              <option value="Civil">Civil</option>
-              <option value="Electrical">Electrical</option>
-              <option value="Instrumentation">
-                Instrumentation
-              </option>
-              <option value="Process">Process</option>
-              <option value="Geology">Geology</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-2 block font-semibold text-gray-800">
-              Summary
-            </label>
-
-            <textarea
-              value={form.summary}
-              onChange={(event) =>
-                updateField("summary", event.target.value)
-              }
-              rows={4}
-              className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500"
-              placeholder="Short article summary"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block font-semibold text-gray-800">
-              Content
-            </label>
-
-            <textarea
-              value={form.content}
-              onChange={(event) =>
-                updateField("content", event.target.value)
-              }
-              rows={18}
-              className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500"
-              placeholder="Full article content"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block font-semibold text-gray-800">
-              Tags
-            </label>
-
-            <input
-              type="text"
-              value={form.tags}
-              onChange={(event) =>
-                updateField("tags", event.target.value)
-              }
-              className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500"
-              placeholder="permit, safety, HSE, PTW"
-            />
-
-            <p className="mt-2 text-sm text-gray-500">
-              Separate tags using commas.
-            </p>
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div>
-              <label className="mb-2 block font-semibold text-gray-800">
-                Status
-              </label>
-
-              <select
-                value={form.status}
-                onChange={(event) =>
-                  updateField("status", event.target.value)
-                }
-                className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500"
-              >
-                <option value="Draft">Draft</option>
-                <option value="Published">Published</option>
-              </select>
+          {message && (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-300">
+              {message}
             </div>
+          )}
 
-            <div>
-              <label className="mb-2 block font-semibold text-gray-800">
-                Author
-              </label>
+          {/* ACTIONS */}
 
-              <input
-                type="text"
-                value={form.author}
-                onChange={(event) =>
-                  updateField("author", event.target.value)
-                }
-                className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-2 block font-semibold text-gray-800">
-              Featured Image URL
-            </label>
-
-            <input
-              type="url"
-              value={form.featuredImage}
-              onChange={(event) =>
-                updateField(
-                  "featuredImage",
-                  event.target.value
-                )
-              }
-              className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500"
-              placeholder="https://example.com/image.jpg"
-            />
-          </div>
-
-          <div className="grid gap-6 sm:grid-cols-2">
-            <div>
-              <label className="mb-2 block font-semibold text-gray-800">
-                Source
-              </label>
-
-              <input
-                type="text"
-                value={form.source}
-                onChange={(event) =>
-                  updateField("source", event.target.value)
-                }
-                className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block font-semibold text-gray-800">
-                Source URL
-              </label>
-
-              <input
-                type="url"
-                value={form.sourceUrl}
-                onChange={(event) =>
-                  updateField("sourceUrl", event.target.value)
-                }
-                className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500"
-                placeholder="https://example.com"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-2 block font-semibold text-gray-800">
-              License
-            </label>
-
-            <input
-              type="text"
-              value={form.license}
-              onChange={(event) =>
-                updateField("license", event.target.value)
-              }
-              className="w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500"
-              placeholder="Original Content, CC BY 4.0, Public Domain"
-            />
-          </div>
-
-          <label className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              checked={form.featured}
-              onChange={(event) =>
-                updateField("featured", event.target.checked)
-              }
-              className="h-5 w-5"
-            />
-
-            <span className="font-semibold text-gray-800">
-              Mark as featured article
-            </span>
-          </label>
-
-          <div className="flex flex-col gap-3 border-t pt-6 sm:flex-row">
+          <div className="flex flex-wrap gap-4 border-t border-slate-800 pt-6">
             <button
               type="submit"
-              disabled={saving}
-              className="rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={
+                saving
+              }
+              className="rounded-xl bg-orange-500 px-6 py-3 font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {saving ? "Updating..." : "Update Article"}
+              {saving
+                ? "Updating..."
+                : "Update Article"}
             </button>
 
             <button
               type="button"
-              onClick={() => router.push("/admin/articles")}
-              className="rounded-lg border border-gray-300 px-6 py-3 font-semibold text-gray-700 hover:bg-gray-100"
+              onClick={() =>
+                router.push(
+                  "/admin/articles"
+                )
+              }
+              disabled={
+                saving
+              }
+              className="rounded-xl border border-slate-700 px-6 py-3 font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -448,5 +831,54 @@ export default function EditArticlePage() {
         </form>
       </div>
     </main>
+  );
+}
+
+const inputClass =
+  "w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500";
+
+function Field({
+  children,
+}: {
+  children:
+    React.ReactNode;
+}) {
+  return (
+    <div>
+      {children}
+    </div>
+  );
+}
+
+function FieldLabel({
+  children,
+}: {
+  children:
+    React.ReactNode;
+}) {
+  return (
+    <label className="mb-2 block text-sm font-semibold text-slate-300">
+      {children}
+    </label>
+  );
+}
+
+function SectionTitle({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div>
+      <h2 className="text-xl font-bold text-white">
+        {title}
+      </h2>
+
+      <p className="mt-2 text-sm text-slate-500">
+        {description}
+      </p>
+    </div>
   );
 }
