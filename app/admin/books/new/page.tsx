@@ -1,6 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+
+import {
+  useState,
+} from "react";
+
+import {
+  useRouter,
+} from "next/navigation";
 
 import ImageUpload from "@/components/ImageUpload";
 import PdfUpload from "@/components/PdfUpload";
@@ -20,64 +28,138 @@ type ContentType =
   | "note"
   | "download";
 
+type ResourceForm = {
+  title: string;
+  author: string;
+  description: string;
+  category: string;
+
+  contentType:
+    ContentType;
+
+  coverImage: string;
+
+  resourceType:
+    ResourceType;
+
+  fileUrl: string;
+  filePublicId: string;
+  externalUrl: string;
+
+  pages: string;
+  edition: string;
+  publisher: string;
+  year: string;
+
+  license: string;
+  source: string;
+  sourceUrl: string;
+
+  featured: boolean;
+};
+
+const initialForm: ResourceForm = {
+  title: "",
+  author: "",
+  description: "",
+  category: "",
+
+  contentType:
+    "book",
+
+  coverImage: "",
+
+  resourceType:
+    "hosted",
+
+  fileUrl: "",
+  filePublicId: "",
+  externalUrl: "",
+
+  pages: "",
+  edition: "",
+  publisher: "",
+  year: "",
+
+  license: "",
+  source: "PetroHub",
+  sourceUrl: "",
+
+  featured: false,
+};
+
+const categories = [
+  "HSE",
+  "Oil & Gas",
+  "Mechanical",
+  "Civil",
+  "Electrical",
+  "Instrumentation",
+  "Process",
+  "Geology",
+];
+
 export default function NewBookPage() {
-  const [loading, setLoading] =
+  const router =
+    useRouter();
+
+  const [
+    form,
+    setForm,
+  ] =
+    useState<ResourceForm>(
+      initialForm
+    );
+
+  const [
+    saving,
+    setSaving,
+  ] =
     useState(false);
 
-  const [message, setMessage] =
+  const [
+    saveMode,
+    setSaveMode,
+  ] =
+    useState<StatusType | null>(
+      null
+    );
+
+  const [
+    error,
+    setError,
+  ] =
     useState("");
 
-  const [form, setForm] =
-    useState({
-      title: "",
-      author: "",
-      description: "",
-      category: "",
-
-      contentType:
-        "book" as ContentType,
-
-      coverImage: "",
-
-      resourceType:
-        "hosted" as ResourceType,
-
-      fileUrl: "",
-      filePublicId: "",
-      externalUrl: "",
-
-      pages: "",
-      edition: "",
-      publisher: "",
-      year: "",
-
-      license: "",
-      source: "PetroHub",
-      sourceUrl: "",
-
-      status:
-        "Published" as StatusType,
-
-      featured: false,
-    });
-
-  async function handleSubmit(
-    event: React.FormEvent<HTMLFormElement>
+  function updateField<
+    K extends keyof ResourceForm
+  >(
+    field: K,
+    value:
+      ResourceForm[K]
   ) {
-    event.preventDefault();
+    setForm(
+      (
+        current
+      ) => ({
+        ...current,
+        [field]:
+          value,
+      })
+    );
+  }
 
-    setMessage("");
-
-    if (!form.title.trim()) {
-      setMessage("Title is required");
-      return;
+  function validate() {
+    if (
+      !form.title.trim()
+    ) {
+      return "Title is required.";
     }
 
-    if (!form.category) {
-      setMessage(
-        "Please select a category"
-      );
-      return;
+    if (
+      !form.category
+    ) {
+      return "Please select a category.";
     }
 
     if (
@@ -85,10 +167,7 @@ export default function NewBookPage() {
         "hosted" &&
       !form.fileUrl
     ) {
-      setMessage(
-        "Please upload a PDF"
-      );
-      return;
+      return "Please upload a PDF.";
     }
 
     if (
@@ -96,27 +175,54 @@ export default function NewBookPage() {
         "external" &&
       !form.externalUrl.trim()
     ) {
-      setMessage(
-        "Official resource URL is required"
+      return "Official resource URL is required.";
+    }
+
+    return "";
+  }
+
+  async function saveResource(
+    status:
+      StatusType
+  ) {
+    const validationError =
+      validate();
+
+    if (
+      validationError
+    ) {
+      setError(
+        validationError
       );
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
+    setSaveMode(
+      status
+    );
+    setError("");
 
     try {
       const response =
-        await fetch("/api/books", {
-          method: "POST",
+        await fetch(
+          "/api/books",
+          {
+            method:
+              "POST",
 
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-          body:
-            JSON.stringify(form),
-        });
+            body:
+              JSON.stringify({
+                ...form,
+                status,
+              }),
+          }
+        );
 
       const data =
         await response.json();
@@ -131,172 +237,178 @@ export default function NewBookPage() {
         );
       }
 
-      setMessage(
-        "Library resource created successfully ✅"
+      router.push(
+        "/admin/books"
       );
 
-      setForm({
-        title: "",
-        author: "",
-        description: "",
-        category: "",
-
-        contentType: "book",
-
-        coverImage: "",
-
-        resourceType:
-          "hosted",
-
-        fileUrl: "",
-        filePublicId: "",
-        externalUrl: "",
-
-        pages: "",
-        edition: "",
-        publisher: "",
-        year: "",
-
-        license: "",
-        source: "PetroHub",
-        sourceUrl: "",
-
-        status: "Published",
-        featured: false,
-      });
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong"
+      router.refresh();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to create resource"
       );
     } finally {
-      setLoading(false);
+      setSaving(false);
+      setSaveMode(null);
     }
   }
 
   return (
     <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-6xl">
+        {/* HEADER */}
 
-        <p className="font-semibold uppercase tracking-widest text-orange-500">
-          PetroHub Library
-        </p>
+        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.22em] text-orange-500">
+              PetroHub Library
+            </p>
 
-        <h1 className="mt-3 text-4xl font-bold">
-          Add Library Resource
-        </h1>
+            <h1 className="mt-3 text-4xl font-black">
+              Add Library Resource
+            </h1>
 
-        <p className="mt-3 text-slate-400">
-          Add books, manuals,
-          standards, notes and
-          downloadable engineering
-          resources.
-        </p>
+            <p className="mt-3 max-w-2xl text-slate-400">
+              Add books,
+              manuals, standards,
+              notes and official
+              engineering resources.
+            </p>
+          </div>
+
+          <Link
+            href="/admin/books"
+            className="rounded-xl border border-slate-700 px-5 py-3 text-sm font-bold text-slate-300 transition hover:border-orange-500 hover:text-white"
+          >
+            Back to Library
+          </Link>
+        </div>
 
         <form
-          onSubmit={handleSubmit}
-          className="mt-10 space-y-7 rounded-2xl border border-slate-800 bg-slate-900 p-6 md:p-8"
+          onSubmit={(
+            event
+          ) =>
+            event.preventDefault()
+          }
+          className="mt-10 space-y-8 rounded-3xl border border-slate-800 bg-slate-900/70 p-6 md:p-8"
         >
-          <Field
-            label="Title"
-            value={form.title}
-            onChange={(value) =>
-              setForm({
-                ...form,
-                title: value,
-              })
-            }
+          <SectionTitle
+            title="Resource Information"
+            description="Basic information used throughout the PetroHub library."
           />
 
-          <Field
-            label="Author"
-            value={form.author}
-            onChange={(value) =>
-              setForm({
-                ...form,
-                author: value,
-              })
-            }
-          />
+          <div className="grid gap-6 md:grid-cols-2">
+            <Field>
+              <FieldLabel>
+                Title
+              </FieldLabel>
 
-          <div className="grid gap-5 md:grid-cols-2">
+              <input
+                value={
+                  form.title
+                }
+                onChange={(
+                  event
+                ) =>
+                  updateField(
+                    "title",
+                    event.target.value
+                  )
+                }
+                className={
+                  inputClass
+                }
+              />
+            </Field>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-300">
+            <Field>
+              <FieldLabel>
+                Author
+              </FieldLabel>
+
+              <input
+                value={
+                  form.author
+                }
+                onChange={(
+                  event
+                ) =>
+                  updateField(
+                    "author",
+                    event.target.value
+                  )
+                }
+                className={
+                  inputClass
+                }
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel>
                 Category
-              </label>
+              </FieldLabel>
 
               <select
                 value={
                   form.category
                 }
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    category:
-                      event.target
-                        .value,
-                  })
+                onChange={(
+                  event
+                ) =>
+                  updateField(
+                    "category",
+                    event.target.value
+                  )
                 }
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+                className={
+                  inputClass
+                }
               >
                 <option value="">
                   Select category
                 </option>
 
-                <option value="HSE">
-                  HSE
-                </option>
-
-                <option value="Oil & Gas">
-                  Oil & Gas
-                </option>
-
-                <option value="Mechanical">
-                  Mechanical
-                </option>
-
-                <option value="Electrical">
-                  Electrical
-                </option>
-
-                <option value="Instrumentation">
-                  Instrumentation
-                </option>
-
-                <option value="Process">
-                  Process
-                </option>
-
-                <option value="Geology">
-                  Geology
-                </option>
-
-                <option value="Civil">
-                  Civil
-                </option>
+                {categories.map(
+                  (
+                    category
+                  ) => (
+                    <option
+                      key={
+                        category
+                      }
+                      value={
+                        category
+                      }
+                    >
+                      {category}
+                    </option>
+                  )
+                )}
               </select>
-            </div>
+            </Field>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-300">
+            <Field>
+              <FieldLabel>
                 Content Type
-              </label>
+              </FieldLabel>
 
               <select
                 value={
                   form.contentType
                 }
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    contentType:
-                      event.target
-                        .value as ContentType,
-                  })
+                onChange={(
+                  event
+                ) =>
+                  updateField(
+                    "contentType",
+                    event.target.value as ContentType
+                  )
                 }
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+                className={
+                  inputClass
+                }
               >
                 <option value="book">
                   Book
@@ -318,73 +430,123 @@ export default function NewBookPage() {
                   Download
                 </option>
               </select>
-            </div>
-
+            </Field>
           </div>
 
-          <ImageUpload
-            value={
-              form.coverImage
-            }
-            onChange={(url) =>
-              setForm({
-                ...form,
-                coverImage: url,
-              })
-            }
-          />
+          <Field>
+            <FieldLabel>
+              Description
+            </FieldLabel>
+
+            <textarea
+              rows={6}
+              value={
+                form.description
+              }
+              onChange={(
+                event
+              ) =>
+                updateField(
+                  "description",
+                  event.target.value
+                )
+              }
+              className={`${inputClass} resize-none`}
+            />
+          </Field>
 
           <div>
-            <label className="mb-3 block text-sm font-semibold text-slate-300">
-              Resource Location
-            </label>
+            <SectionTitle
+              title="Cover Image"
+              description="Upload the image used to represent this library resource."
+            />
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="mt-5">
+              <ImageUpload
+                value={
+                  form.coverImage
+                }
+                onChange={(
+                  url
+                ) =>
+                  updateField(
+                    "coverImage",
+                    url
+                  )
+                }
+              />
+            </div>
+          </div>
 
+          {/* RESOURCE LOCATION */}
+
+          <div>
+            <SectionTitle
+              title="Resource Location"
+              description="Choose whether PetroHub hosts the PDF or links to an official external source."
+            />
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
               <button
                 type="button"
                 onClick={() =>
-                  setForm({
-                    ...form,
-                    resourceType:
-                      "hosted",
-                    externalUrl: "",
-                  })
+                  setForm(
+                    (
+                      current
+                    ) => ({
+                      ...current,
+
+                      resourceType:
+                        "hosted",
+
+                      externalUrl:
+                        "",
+                    })
+                  )
                 }
-                className={`rounded-xl border p-5 text-left ${
+                className={`rounded-2xl border p-5 text-left transition ${
                   form.resourceType ===
                   "hosted"
                     ? "border-orange-500 bg-orange-500/10"
-                    : "border-slate-700 bg-slate-950"
+                    : "border-slate-700 bg-slate-950 hover:border-slate-600"
                 }`}
               >
                 <p className="font-bold">
                   Hosted PDF
                 </p>
 
-                <p className="mt-2 text-sm text-slate-400">
-                  PetroHub stores and
-                  displays the PDF.
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  PetroHub stores
+                  and displays the
+                  uploaded PDF.
                 </p>
               </button>
 
               <button
                 type="button"
                 onClick={() =>
-                  setForm({
-                    ...form,
-                    resourceType:
-                      "external",
-                    fileUrl: "",
-                    filePublicId:
-                      "",
-                  })
+                  setForm(
+                    (
+                      current
+                    ) => ({
+                      ...current,
+
+                      resourceType:
+                        "external",
+
+                      fileUrl:
+                        "",
+
+                      filePublicId:
+                        "",
+                    })
+                  )
                 }
-                className={`rounded-xl border p-5 text-left ${
+                className={`rounded-2xl border p-5 text-left transition ${
                   form.resourceType ===
                   "external"
                     ? "border-orange-500 bg-orange-500/10"
-                    : "border-slate-700 bg-slate-950"
+                    : "border-slate-700 bg-slate-950 hover:border-slate-600"
                 }`}
               >
                 <p className="font-bold">
@@ -392,253 +554,352 @@ export default function NewBookPage() {
                   Resource
                 </p>
 
-                <p className="mt-2 text-sm text-slate-400">
-                  Users are sent to
-                  the official source.
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  Users are sent
+                  to the official
+                  source.
                 </p>
               </button>
-
             </div>
           </div>
 
           {form.resourceType ===
             "hosted" && (
             <PdfUpload
-              value={form.fileUrl}
+              value={
+                form.fileUrl
+              }
               onChange={(
                 url,
                 publicId
-              ) =>
-                setForm({
-                  ...form,
-                  fileUrl: url,
-                  filePublicId:
-                    publicId,
-                })
-              }
+              ) => {
+                setForm(
+                  (
+                    current
+                  ) => ({
+                    ...current,
+
+                    fileUrl:
+                      url,
+
+                    filePublicId:
+                      publicId,
+                  })
+                );
+              }}
             />
           )}
 
           {form.resourceType ===
             "external" && (
-            <Field
-              label="Official Resource URL"
-              value={
-                form.externalUrl
-              }
-              onChange={(value) =>
-                setForm({
-                  ...form,
-                  externalUrl: value,
-                })
-              }
-              placeholder="https://..."
-            />
+            <Field>
+              <FieldLabel>
+                Official Resource
+                URL
+              </FieldLabel>
+
+              <input
+                type="url"
+                value={
+                  form.externalUrl
+                }
+                onChange={(
+                  event
+                ) =>
+                  updateField(
+                    "externalUrl",
+                    event.target.value
+                  )
+                }
+                placeholder="https://..."
+                className={
+                  inputClass
+                }
+              />
+            </Field>
           )}
 
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-300">
-              Description
-            </label>
+          {/* PUBLICATION DATA */}
 
-            <textarea
-              rows={6}
-              value={
-                form.description
-              }
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  description:
-                    event.target
-                      .value,
-                })
-              }
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
-            />
-          </div>
+          <SectionTitle
+            title="Publication Details"
+            description="Optional bibliographic and attribution information."
+          />
 
-          <div className="grid gap-5 md:grid-cols-2">
-
-            <Field
+          <div className="grid gap-6 md:grid-cols-2">
+            <TextField
               label="Edition"
-              value={form.edition}
-              onChange={(value) =>
-                setForm({
-                  ...form,
-                  edition: value,
-                })
+              value={
+                form.edition
+              }
+              onChange={(
+                value
+              ) =>
+                updateField(
+                  "edition",
+                  value
+                )
               }
             />
 
-            <Field
+            <TextField
               label="Publisher"
               value={
                 form.publisher
               }
-              onChange={(value) =>
-                setForm({
-                  ...form,
-                  publisher: value,
-                })
+              onChange={(
+                value
+              ) =>
+                updateField(
+                  "publisher",
+                  value
+                )
               }
             />
 
-            <Field
+            <TextField
               label="Pages"
-              value={form.pages}
-              onChange={(value) =>
-                setForm({
-                  ...form,
-                  pages: value,
-                })
+              value={
+                form.pages
+              }
+              onChange={(
+                value
+              ) =>
+                updateField(
+                  "pages",
+                  value
+                )
               }
             />
 
-            <Field
+            <TextField
               label="Year"
-              value={form.year}
-              onChange={(value) =>
-                setForm({
-                  ...form,
-                  year: value,
-                })
+              value={
+                form.year
+              }
+              onChange={(
+                value
+              ) =>
+                updateField(
+                  "year",
+                  value
+                )
               }
             />
 
-          </div>
-
-          <Field
-            label="License / Rights"
-            value={form.license}
-            onChange={(value) =>
-              setForm({
-                ...form,
-                license: value,
-              })
-            }
-          />
-
-          <Field
-            label="Source"
-            value={form.source}
-            onChange={(value) =>
-              setForm({
-                ...form,
-                source: value,
-              })
-            }
-          />
-
-          <Field
-            label="Source URL"
-            value={form.sourceUrl}
-            onChange={(value) =>
-              setForm({
-                ...form,
-                sourceUrl: value,
-              })
-            }
-          />
-
-          <div>
-            <label className="mb-2 block text-sm font-semibold">
-              Status
-            </label>
-
-            <select
-              value={form.status}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  status:
-                    event.target
-                      .value as StatusType,
-                })
+            <TextField
+              label="License / Rights"
+              value={
+                form.license
               }
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
-            >
-              <option value="Published">
-                Published
-              </option>
+              onChange={(
+                value
+              ) =>
+                updateField(
+                  "license",
+                  value
+                )
+              }
+            />
 
-              <option value="Draft">
-                Draft
-              </option>
-            </select>
+            <TextField
+              label="Source"
+              value={
+                form.source
+              }
+              onChange={(
+                value
+              ) =>
+                updateField(
+                  "source",
+                  value
+                )
+              }
+            />
           </div>
 
-          <label className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-950 p-4">
+          <Field>
+            <FieldLabel>
+              Source URL
+            </FieldLabel>
+
+            <input
+              type="url"
+              value={
+                form.sourceUrl
+              }
+              onChange={(
+                event
+              ) =>
+                updateField(
+                  "sourceUrl",
+                  event.target.value
+                )
+              }
+              className={
+                inputClass
+              }
+            />
+          </Field>
+
+          <label className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/50 p-4">
             <input
               type="checkbox"
               checked={
                 form.featured
               }
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  featured:
-                    event.target
-                      .checked,
-                })
+              onChange={(
+                event
+              ) =>
+                updateField(
+                  "featured",
+                  event.target.checked
+                )
               }
+              className="h-5 w-5"
             />
 
-            <span className="font-semibold">
-              Featured Resource
-            </span>
+            <div>
+              <p className="font-semibold">
+                Featured Resource
+              </p>
+
+              <p className="mt-1 text-xs text-slate-500">
+                Highlight this
+                resource in PetroHub.
+              </p>
+            </div>
           </label>
 
-          {message && (
-            <div className="rounded-xl border border-slate-700 bg-slate-950 p-4 text-orange-400">
-              {message}
+          {error && (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+              {error}
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-xl bg-orange-500 px-6 py-3 font-bold hover:bg-orange-600 disabled:opacity-50"
-          >
-            {loading
-              ? "Saving..."
-              : "Publish Resource"}
-          </button>
+          <div className="flex flex-wrap gap-4 border-t border-slate-800 pt-6">
+            <button
+              type="button"
+              disabled={
+                saving
+              }
+              onClick={() =>
+                saveResource(
+                  "Published"
+                )
+              }
+              className="rounded-xl bg-orange-500 px-6 py-3 font-bold text-white transition hover:bg-orange-600 disabled:opacity-50"
+            >
+              {saving &&
+              saveMode ===
+                "Published"
+                ? "Publishing..."
+                : "Publish Resource"}
+            </button>
+
+            <button
+              type="button"
+              disabled={
+                saving
+              }
+              onClick={() =>
+                saveResource(
+                  "Draft"
+                )
+              }
+              className="rounded-xl border border-slate-700 bg-slate-950 px-6 py-3 font-bold text-slate-300 transition hover:border-orange-500 hover:text-white disabled:opacity-50"
+            >
+              {saving &&
+              saveMode ===
+                "Draft"
+                ? "Saving..."
+                : "Save Draft"}
+            </button>
+          </div>
         </form>
       </div>
     </main>
   );
 }
 
+const inputClass =
+  "w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500";
+
 function Field({
+  children,
+}: {
+  children:
+    React.ReactNode;
+}) {
+  return <div>{children}</div>;
+}
+
+function FieldLabel({
+  children,
+}: {
+  children:
+    React.ReactNode;
+}) {
+  return (
+    <label className="mb-2 block text-sm font-semibold text-slate-300">
+      {children}
+    </label>
+  );
+}
+
+function TextField({
   label,
   value,
   onChange,
-  placeholder = "",
 }: {
   label: string;
   value: string;
-  onChange: (
-    value: string
-  ) => void;
-  placeholder?: string;
+  onChange:
+    (
+      value: string
+    ) => void;
 }) {
   return (
-    <div>
-      <label className="mb-2 block text-sm font-semibold text-slate-300">
+    <Field>
+      <FieldLabel>
         {label}
-      </label>
+      </FieldLabel>
 
       <input
-        value={value}
-        placeholder={placeholder}
-        onChange={(event) =>
+        value={
+          value
+        }
+        onChange={(
+          event
+        ) =>
           onChange(
             event.target.value
           )
         }
-        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3"
+        className={
+          inputClass
+        }
       />
+    </Field>
+  );
+}
+
+function SectionTitle({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div>
+      <h2 className="text-xl font-bold">
+        {title}
+      </h2>
+
+      <p className="mt-2 text-sm text-slate-500">
+        {description}
+      </p>
     </div>
   );
 }
