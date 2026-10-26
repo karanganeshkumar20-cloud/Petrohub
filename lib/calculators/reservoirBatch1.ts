@@ -1,10 +1,10 @@
 /* =========================================================
    PETROHUB
-   RESERVOIR ENGINEERING CALCULATORS — BATCH 1
+   RESERVOIR ENGINEERING CALCULATORS - BATCH 1
 ========================================================= */
 
 /* =========================================================
-   1. DARCY'S LAW — LINEAR SINGLE-PHASE FLOW
+   1. DARCY'S LAW - LINEAR SINGLE-PHASE FLOW
 ========================================================= */
 
 export type DarcyLinearFlowInput = {
@@ -67,6 +67,82 @@ export function calculateDarcyLinearFlow(
   return {
     flowRateBblPerDay,
     flowRateM3PerDay,
+  };
+}
+
+/* =========================================================
+   2. VOGEL IPR
+   INFLOW PERFORMANCE RELATIONSHIP
+========================================================= */
+
+export type VogelIPRInput = {
+  reservoirPressurePsi: number;
+  flowingBottomholePressurePsi: number;
+  maxProductionRateStbPerDay: number;
+};
+
+export type VogelIPRResult = {
+  productionRateStbPerDay: number;
+  productionRateM3PerDay: number;
+  percentOfMaxRate: number;
+  pressureRatio: number;
+};
+
+export function calculateVogelIPR(
+  input: VogelIPRInput
+): VogelIPRResult {
+  validatePositive(
+    input.reservoirPressurePsi,
+    "Reservoir pressure"
+  );
+
+  validateNonNegative(
+    input.flowingBottomholePressurePsi,
+    "Flowing bottomhole pressure"
+  );
+
+  validatePositive(
+    input.maxProductionRateStbPerDay,
+    "Maximum production rate"
+  );
+
+  if (
+    input.flowingBottomholePressurePsi >
+    input.reservoirPressurePsi
+  ) {
+    throw new Error(
+      "Flowing bottomhole pressure cannot be greater than reservoir pressure."
+    );
+  }
+
+  const pressureRatio =
+    input.flowingBottomholePressurePsi /
+    input.reservoirPressurePsi;
+
+  const productionRateStbPerDay =
+    input.maxProductionRateStbPerDay *
+    (
+      1 -
+      0.2 * pressureRatio -
+      0.8 * pressureRatio ** 2
+    );
+
+  const productionRateM3PerDay =
+    productionRateStbPerDay *
+    0.158987294928;
+
+  const percentOfMaxRate =
+    (
+      productionRateStbPerDay /
+      input.maxProductionRateStbPerDay
+    ) *
+    100;
+
+  return {
+    productionRateStbPerDay,
+    productionRateM3PerDay,
+    percentOfMaxRate,
+    pressureRatio,
   };
 }
 

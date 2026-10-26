@@ -668,6 +668,14 @@ export default function FormulaManager() {
               <option value="initial-circulating-pressure">
                 Initial Circulating Pressure
               </option>
+
+              <option value="darcy-linear-flow">
+                Darcy Linear Flow
+              </option>
+
+              <option value="vogel-ipr">
+                Vogel IPR
+              </option>
             </select>
           </label>
 

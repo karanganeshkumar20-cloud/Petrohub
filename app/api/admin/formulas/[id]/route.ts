@@ -33,6 +33,7 @@ const SUPPORTED_CALCULATION_KEYS = [
   "annular-velocity",
   "initial-circulating-pressure",
   "darcy-linear-flow",
+  "vogel-ipr",
 ];
 
 /* =========================================================

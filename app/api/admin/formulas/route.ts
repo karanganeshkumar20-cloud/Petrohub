@@ -1,4 +1,4 @@
-import {
+﻿import {
   NextRequest,
   NextResponse,
 } from "next/server";
@@ -25,6 +25,7 @@ const SUPPORTED_CALCULATION_KEYS = [
   "annular-velocity",
   "initial-circulating-pressure",
   "darcy-linear-flow",
+  "vogel-ipr",
 ];
 
 /* =========================================================
