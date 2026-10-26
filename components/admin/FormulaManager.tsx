@@ -680,6 +680,10 @@ export default function FormulaManager() {
               <option value="steady-state-radial-oil-flow">
                 Steady-State Radial Oil Flow
               </option>
+
+              <option value="productivity-index">
+                Productivity Index
+              </option>
             </select>
           </label>
 

@@ -290,3 +290,60 @@ export function calculateSteadyStateRadialOilFlow(
     productivityIndexStbPerDayPsi,
   };
 }
+export type ProductivityIndexInput = {
+  productionRateStbPerDay: number;
+  reservoirPressurePsi: number;
+  flowingBottomholePressurePsi: number;
+};
+
+export type ProductivityIndexResult = {
+  productivityIndexStbPerDayPsi: number;
+  pressureDrawdownPsi: number;
+  productionRateM3PerDay: number;
+};
+
+export function calculateProductivityIndex(
+  input: ProductivityIndexInput
+): ProductivityIndexResult {
+  validateNonNegative(
+    input.productionRateStbPerDay,
+    "Production rate"
+  );
+
+  validatePositive(
+    input.reservoirPressurePsi,
+    "Reservoir pressure"
+  );
+
+  validateNonNegative(
+    input.flowingBottomholePressurePsi,
+    "Flowing bottomhole pressure"
+  );
+
+  if (
+    input.flowingBottomholePressurePsi >=
+    input.reservoirPressurePsi
+  ) {
+    throw new Error(
+      "Flowing bottomhole pressure must be lower than reservoir pressure."
+    );
+  }
+
+  const pressureDrawdownPsi =
+    input.reservoirPressurePsi -
+    input.flowingBottomholePressurePsi;
+
+  const productivityIndexStbPerDayPsi =
+    input.productionRateStbPerDay /
+    pressureDrawdownPsi;
+
+  const productionRateM3PerDay =
+    input.productionRateStbPerDay *
+    0.158987294928;
+
+  return {
+    productivityIndexStbPerDayPsi,
+    pressureDrawdownPsi,
+    productionRateM3PerDay,
+  };
+}

@@ -27,6 +27,7 @@ const SUPPORTED_CALCULATION_KEYS = [
   "darcy-linear-flow",
   "vogel-ipr",
   "steady-state-radial-oil-flow",
+  "productivity-index",
 ];
 
 /* =========================================================
