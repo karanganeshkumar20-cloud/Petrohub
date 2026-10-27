@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import FormulaBookmarkButton from "@/components/formulas/FormulaBookmarkButton";
 
 import VogelIPRCalculator from "@/components/formulas/VogelIPRCalculator";
 
@@ -65,7 +66,13 @@ export default function VogelIPRPage() {
             </p>
           </div>
         </div>
-      </section>
+      
+          <div className="mx-auto mt-8 max-w-7xl">
+            <FormulaBookmarkButton
+              slug="vogel-ipr"
+            />
+          </div>
+</section>
 
       {/* =================================================
           CALCULATOR CONTENT

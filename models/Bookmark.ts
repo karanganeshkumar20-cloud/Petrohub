@@ -3,14 +3,19 @@ import mongoose, {
   Schema,
 } from "mongoose";
 
+export type BookmarkItemType =
+  | "article"
+  | "book"
+  | "formula";
+
 export interface IBookmark {
   userId: mongoose.Types.ObjectId;
 
   itemType:
-    | "article"
-    | "book";
+    BookmarkItemType;
 
-  itemId: mongoose.Types.ObjectId;
+  itemId:
+    mongoose.Types.ObjectId;
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -23,52 +28,74 @@ const BookmarkSchema =
         type:
           Schema.Types
             .ObjectId,
-        ref: "User",
-        required: true,
-        index: true,
+
+        ref:
+          "User",
+
+        required:
+          true,
+
+        index:
+          true,
       },
 
       itemType: {
-        type: String,
+        type:
+          String,
+
         enum: [
           "article",
           "book",
+          "formula",
         ],
-        required: true,
-        index: true,
+
+        required:
+          true,
+
+        index:
+          true,
       },
 
       itemId: {
         type:
           Schema.Types
             .ObjectId,
-        required: true,
-        index: true,
+
+        required:
+          true,
+
+        index:
+          true,
       },
     },
     {
-      timestamps: true,
+      timestamps:
+        true,
     }
   );
 
-/*
- * Prevent duplicate bookmarks
- */
-
 BookmarkSchema.index(
   {
-    userId: 1,
-    itemType: 1,
-    itemId: 1,
+    userId:
+      1,
+
+    itemType:
+      1,
+
+    itemId:
+      1,
   },
   {
-    unique: true,
+    unique:
+      true,
   }
 );
 
-export const BookmarkModel: Model<IBookmark> =
+export const BookmarkModel:
+  Model<IBookmark> =
   (mongoose.models
-    .Bookmark as Model<IBookmark>) ||
+    .Bookmark as
+    Model<IBookmark>) ||
   mongoose.model<IBookmark>(
     "Bookmark",
     BookmarkSchema

@@ -3,46 +3,63 @@
 import Link from "next/link";
 
 import {
+  type ReactNode,
   useMemo,
   useState,
 } from "react";
 
 type ItemType =
   | "article"
-  | "book";
+  | "book"
+  | "formula";
 
-type SavedArticle = {
-  _id: string;
-  title: string;
-  slug: string;
-  summary?: string;
-  category?: string;
-  featuredImage?: string;
-  author?: string;
-};
+type SavedContent = {
+  _id:
+    string;
 
-type SavedBook = {
-  _id: string;
-  title: string;
-  slug: string;
-  description?: string;
-  category?: string;
-  coverImage?: string;
-  author?: string;
-  contentType?: string;
+  title:
+    string;
+
+  slug:
+    string;
+
+  description?:
+    string;
+
+  category?:
+    string;
+
+  subDomain?:
+    string;
+
+  author?:
+    string;
+
+  featuredImage?:
+    string;
+
+  coverImage?:
+    string;
+
+  contentType?:
+    string;
+
+  formulaText?:
+    string;
 };
 
 type SavedBookmark = {
-  bookmarkId: string;
+  bookmarkId:
+    string;
 
   itemType:
     ItemType;
 
-  savedAt?: string;
+  savedAt?:
+    string;
 
   item:
-    | SavedArticle
-    | SavedBook;
+    SavedContent;
 };
 
 type Props = {
@@ -52,8 +69,7 @@ type Props = {
 
 type FilterType =
   | "all"
-  | "article"
-  | "book";
+  | ItemType;
 
 export default function SavedItemsManager({
   initialBookmarks,
@@ -82,7 +98,9 @@ export default function SavedItemsManager({
   ] =
     useState<
       string | null
-    >(null);
+    >(
+      null
+    );
 
   const [
     error,
@@ -94,58 +112,70 @@ export default function SavedItemsManager({
     setSuccess,
   ] = useState("");
 
-  /* =========================
+  /* =====================================================
      COUNTS
-  ========================= */
+  ===================================================== */
 
   const counts =
-    useMemo(() => {
-      return {
+    useMemo(
+      () => ({
         total:
           bookmarks.length,
 
         articles:
           bookmarks.filter(
-            (bookmark) =>
-              bookmark.itemType ===
+            (
+              item
+            ) =>
+              item.itemType ===
               "article"
           ).length,
 
         resources:
           bookmarks.filter(
-            (bookmark) =>
-              bookmark.itemType ===
+            (
+              item
+            ) =>
+              item.itemType ===
               "book"
           ).length,
-      };
-    }, [bookmarks]);
 
-  /* =========================
-     FILTERED ITEMS
-  ========================= */
+        formulas:
+          bookmarks.filter(
+            (
+              item
+            ) =>
+              item.itemType ===
+              "formula"
+          ).length,
+      }),
+      [
+        bookmarks,
+      ]
+    );
 
   const filteredBookmarks =
-    useMemo(() => {
-      if (
+    useMemo(
+      () =>
         filter ===
         "all"
-      ) {
-        return bookmarks;
-      }
+          ? bookmarks
+          : bookmarks.filter(
+              (
+                item
+              ) =>
+                item.itemType ===
+                filter
+            ),
+      [
+        bookmarks,
+        filter,
+      ]
+    );
 
-      return bookmarks.filter(
-        (bookmark) =>
-          bookmark.itemType ===
-          filter
-      );
-    }, [
-      bookmarks,
-      filter,
-    ]);
-
-  /* =========================
-     REMOVE BOOKMARK
-  ========================= */
+  /* =====================================================
+     REMOVE
+  ===================================================== */
 
   async function removeBookmark(
     bookmark:
@@ -156,7 +186,9 @@ export default function SavedItemsManager({
         `Remove "${bookmark.item.title}" from your saved items?`
       );
 
-    if (!confirmed) {
+    if (
+      !confirmed
+    ) {
       return;
     }
 
@@ -164,8 +196,13 @@ export default function SavedItemsManager({
       bookmark.bookmarkId
     );
 
-    setError("");
-    setSuccess("");
+    setError(
+      ""
+    );
+
+    setSuccess(
+      ""
+    );
 
     try {
       const response =
@@ -186,11 +223,12 @@ export default function SavedItemsManager({
       } = {};
 
       try {
-        data = text
-          ? JSON.parse(
-              text
-            )
-          : {};
+        data =
+          text
+            ? JSON.parse(
+                text
+              )
+            : {};
       } catch {
         throw new Error(
           `Invalid server response (${response.status})`
@@ -212,7 +250,9 @@ export default function SavedItemsManager({
           current
         ) =>
           current.filter(
-            (item) =>
+            (
+              item
+            ) =>
               item.bookmarkId !==
               bookmark.bookmarkId
           )
@@ -221,9 +261,7 @@ export default function SavedItemsManager({
       setSuccess(
         "Saved item removed successfully."
       );
-    } catch (
-      error
-    ) {
+    } catch (error) {
       setError(
         error instanceof
           Error
@@ -239,11 +277,9 @@ export default function SavedItemsManager({
 
   return (
     <div>
-      {/* =========================
-          STATS
-      ========================= */}
+      {/* STATS */}
 
-      <div className="grid gap-5 sm:grid-cols-3">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <SavedStat
           label="Total Saved"
           value={
@@ -252,23 +288,28 @@ export default function SavedItemsManager({
         />
 
         <SavedStat
-          label="Saved Articles"
+          label="Articles"
           value={
             counts.articles
           }
         />
 
         <SavedStat
-          label="Saved Resources"
+          label="Resources"
           value={
             counts.resources
           }
         />
+
+        <SavedStat
+          label="Formulas"
+          value={
+            counts.formulas
+          }
+        />
       </div>
 
-      {/* =========================
-          SAVED COLLECTION
-      ========================= */}
+      {/* COLLECTION */}
 
       <section className="mt-12">
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
@@ -281,15 +322,13 @@ export default function SavedItemsManager({
               Saved Items
             </h2>
 
-            <p className="mt-3 text-slate-400">
-              Articles and
-              engineering
-              resources saved
-              for later.
+            <p className="mt-3 max-w-2xl text-slate-400">
+              Articles, engineering
+              resources and verified
+              formulas saved for
+              later.
             </p>
           </div>
-
-          {/* FILTERS */}
 
           <div className="flex flex-wrap gap-2">
             <FilterButton
@@ -345,10 +384,26 @@ export default function SavedItemsManager({
               }
               )
             </FilterButton>
+
+            <FilterButton
+              active={
+                filter ===
+                "formula"
+              }
+              onClick={() =>
+                setFilter(
+                  "formula"
+                )
+              }
+            >
+              Formulas (
+              {
+                counts.formulas
+              }
+              )
+            </FilterButton>
           </div>
         </div>
-
-        {/* ERROR */}
 
         {error && (
           <div className="mt-6 rounded-xl border border-red-900 bg-red-950/40 p-4 text-red-300">
@@ -356,36 +411,26 @@ export default function SavedItemsManager({
           </div>
         )}
 
-        {/* SUCCESS */}
-
         {success && (
           <div className="mt-6 rounded-xl border border-green-800 bg-green-500/10 p-4 text-green-400">
-            {
-              success
-            }
+            {success}
           </div>
         )}
-
-        {/* EMPTY */}
 
         {filteredBookmarks.length ===
         0 ? (
           <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-10 text-center">
-            <div className="text-4xl">
-              ☆
-            </div>
-
-            <h3 className="mt-4 text-xl font-bold">
+            <h3 className="text-xl font-bold">
               No saved items
             </h3>
 
             <p className="mx-auto mt-3 max-w-xl leading-7 text-slate-400">
-              Save useful
-              PetroHub articles
-              and library
-              resources to access
-              them quickly from
-              your profile.
+              Save useful PetroHub
+              articles, library
+              resources and verified
+              formulas to access
+              them quickly from your
+              profile.
             </p>
 
             <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -402,6 +447,13 @@ export default function SavedItemsManager({
               >
                 Browse Library
               </Link>
+
+              <Link
+                href="/formulas"
+                className="rounded-xl border border-slate-700 px-5 py-3 font-semibold text-slate-300 transition hover:border-orange-500 hover:text-orange-400"
+              >
+                Browse Formulas
+              </Link>
             </div>
           </div>
         ) : (
@@ -410,38 +462,46 @@ export default function SavedItemsManager({
               (
                 bookmark
               ) => {
+                const {
+                  item,
+                  itemType,
+                } =
+                  bookmark;
+
                 const isArticle =
-                  bookmark.itemType ===
+                  itemType ===
                   "article";
 
-                const article =
-                  isArticle
-                    ? (bookmark.item as SavedArticle)
-                    : null;
+                const isBook =
+                  itemType ===
+                  "book";
 
-                const book =
-                  !isArticle
-                    ? (bookmark.item as SavedBook)
-                    : null;
-
-                const image =
-                  isArticle
-                    ? article
-                        ?.featuredImage
-                    : book
-                        ?.coverImage;
-
-                const description =
-                  isArticle
-                    ? article
-                        ?.summary
-                    : book
-                        ?.description;
+                const isFormula =
+                  itemType ===
+                  "formula";
 
                 const href =
                   isArticle
-                    ? `/articles/${bookmark.item.slug}`
-                    : `/library/${bookmark.item.slug}`;
+                    ? `/articles/${item.slug}`
+                    : isBook
+                      ? `/library/${item.slug}`
+                      : `/formulas/${item.slug}`;
+
+                const image =
+                  isArticle
+                    ? item.featuredImage
+                    : isBook
+                      ? item.coverImage
+                      : "";
+
+                const label =
+                  isArticle
+                    ? "Article"
+                    : isFormula
+                      ? "Formula"
+                      : getContentTypeLabel(
+                          item.contentType
+                        );
 
                 return (
                   <article
@@ -450,8 +510,6 @@ export default function SavedItemsManager({
                     }
                     className="flex flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900"
                   >
-                    {/* IMAGE */}
-
                     <Link
                       href={
                         href
@@ -464,24 +522,19 @@ export default function SavedItemsManager({
                             image
                           }
                           alt={
-                            bookmark
-                              .item
-                              .title
+                            item.title
                           }
-                          className={
-                            isArticle
-                              ? "aspect-video w-full object-cover"
-                              : "aspect-[16/9] w-full object-cover"
-                          }
+                          loading="lazy"
+                          className="aspect-video w-full object-cover"
                         />
                       ) : (
                         <div className="flex aspect-video items-center justify-center bg-slate-800 text-sm font-semibold text-slate-500">
-                          PetroHub
+                          {isFormula
+                            ? "Engineering Formula"
+                            : "PetroHub"}
                         </div>
                       )}
                     </Link>
-
-                    {/* BODY */}
 
                     <div className="flex flex-1 flex-col p-5">
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -489,25 +542,20 @@ export default function SavedItemsManager({
                           className={
                             isArticle
                               ? "rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-400"
-                              : "rounded-full bg-orange-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-orange-400"
+                              : isFormula
+                                ? "rounded-full bg-purple-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-purple-400"
+                                : "rounded-full bg-orange-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-orange-400"
                           }
                         >
-                          {isArticle
-                            ? "Article"
-                            : getContentTypeLabel(
-                                book
-                                  ?.contentType
-                              )}
+                          {
+                            label
+                          }
                         </span>
 
-                        {bookmark
-                          .item
-                          .category && (
+                        {item.category && (
                           <span className="text-xs text-slate-500">
                             {
-                              bookmark
-                                .item
-                                .category
+                              item.category
                             }
                           </span>
                         )}
@@ -520,33 +568,51 @@ export default function SavedItemsManager({
                       >
                         <h3 className="mt-4 text-xl font-bold leading-7 transition hover:text-orange-400">
                           {
-                            bookmark
-                              .item
-                              .title
+                            item.title
                           }
                         </h3>
                       </Link>
 
-                      {bookmark
-                        .item
-                        .author && (
+                      {item.author && (
                         <p className="mt-2 text-sm text-slate-500">
                           By{" "}
                           {
-                            bookmark
-                              .item
-                              .author
+                            item.author
                           }
                         </p>
                       )}
 
-                      {description && (
+                      {isFormula &&
+                        item.subDomain && (
+                          <p className="mt-2 text-sm text-slate-500">
+                            {
+                              item.subDomain
+                            }
+                          </p>
+                        )}
+
+                      {item.description && (
                         <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-400">
                           {
-                            description
+                            item.description
                           }
                         </p>
                       )}
+
+                      {isFormula &&
+                        item.formulaText && (
+                          <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950 p-3">
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                              Formula
+                            </p>
+
+                            <p className="mt-2 break-words font-mono text-sm text-slate-300">
+                              {
+                                item.formulaText
+                              }
+                            </p>
+                          </div>
+                        )}
 
                       <div className="mt-auto pt-6">
                         {bookmark.savedAt && (
@@ -567,7 +633,9 @@ export default function SavedItemsManager({
                           >
                             {isArticle
                               ? "Read Article"
-                              : "Open Resource"}
+                              : isFormula
+                                ? "Open Formula"
+                                : "Open Resource"}
                           </Link>
 
                           <button
@@ -602,16 +670,15 @@ export default function SavedItemsManager({
   );
 }
 
-/* =========================
-   STAT
-========================= */
-
 function SavedStat({
   label,
   value,
 }: {
-  label: string;
-  value: number;
+  label:
+    string;
+
+  value:
+    number;
 }) {
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
@@ -626,19 +693,19 @@ function SavedStat({
   );
 }
 
-/* =========================
-   FILTER BUTTON
-========================= */
-
 function FilterButton({
   active,
   children,
   onClick,
 }: {
-  active: boolean;
+  active:
+    boolean;
+
   children:
-    React.ReactNode;
-  onClick: () => void;
+    ReactNode;
+
+  onClick:
+    () => void;
 }) {
   return (
     <button
@@ -657,14 +724,12 @@ function FilterButton({
   );
 }
 
-/* =========================
-   CONTENT LABEL
-========================= */
-
 function getContentTypeLabel(
   type?: string
 ) {
-  switch (type) {
+  switch (
+    type
+  ) {
     case "manual":
       return "Manual";
 
@@ -682,15 +747,14 @@ function getContentTypeLabel(
   }
 }
 
-/* =========================
-   DATE
-========================= */
-
 function formatDate(
-  value: string
+  value:
+    string
 ) {
   const date =
-    new Date(value);
+    new Date(
+      value
+    );
 
   if (
     Number.isNaN(
@@ -703,9 +767,14 @@ function formatDate(
   return date.toLocaleDateString(
     "en-IN",
     {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
+      day:
+        "2-digit",
+
+      month:
+        "short",
+
+      year:
+        "numeric",
     }
   );
 }

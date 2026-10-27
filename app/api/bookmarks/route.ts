@@ -9,55 +9,66 @@ import {
 
 import mongoose from "mongoose";
 
-import { authOptions } from "@/lib/auth";
-import { connectDB } from "@/lib/mongodb";
+import {
+  authOptions,
+} from "@/lib/auth";
+
+import {
+  connectDB,
+} from "@/lib/mongodb";
+
+import {
+  bookmarkTargetExists,
+  isBookmarkItemType,
+  loadSavedItems,
+} from "@/lib/saved-items";
 
 import User from "@/models/User";
-import Article from "@/models/Article";
-import { BookModel } from "@/models/Book";
 
 import {
   BookmarkModel,
 } from "@/models/Bookmark";
 
-export const runtime = "nodejs";
+export const runtime =
+  "nodejs";
 
 type BookmarkUser = {
-  _id: mongoose.Types.ObjectId;
-  isBlocked?: boolean;
+  _id:
+    mongoose.Types.ObjectId;
+
+  isBlocked?:
+    boolean;
 };
 
-/* =========================
-   GET BOOKMARKS
-========================= */
+/* =========================================================
+   GET CURRENT USER
+========================================================= */
 
-export async function GET(
-  request: NextRequest
-) {
-  try {
-    const session =
-      await getServerSession(
-        authOptions
-      );
+async function getCurrentUser() {
+  const session =
+    await getServerSession(
+      authOptions
+    );
 
-    if (
-      !session?.user?.email
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Login required",
-        },
-        {
-          status: 401,
-        }
-      );
-    }
+  if (
+    !session?.user?.email
+  ) {
+    return {
+      error:
+        "Login required",
 
-    await connectDB();
+      status:
+        401,
 
-    const user = (await User.findOne({
+      user:
+        null,
+    };
+  }
+
+  await connectDB();
+
+  const user =
+    (await User.findOne({
       email:
         session.user.email
           .trim()
@@ -66,77 +77,118 @@ export async function GET(
       .select(
         "_id isBlocked"
       )
-      .lean()) as BookmarkUser | null;
+      .lean()) as
+      BookmarkUser |
+      null;
 
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "User not found",
-        },
-        {
-          status: 404,
-        }
-      );
-    }
+  if (!user) {
+    return {
+      error:
+        "User not found",
+
+      status:
+        404,
+
+      user:
+        null,
+    };
+  }
+
+  if (
+    user.isBlocked ===
+    true
+  ) {
+    return {
+      error:
+        "Account blocked",
+
+      status:
+        403,
+
+      user:
+        null,
+    };
+  }
+
+  return {
+    error:
+      "",
+
+    status:
+      200,
+
+    user,
+  };
+}
+
+/* =========================================================
+   GET BOOKMARKS
+========================================================= */
+
+export async function GET(
+  request:
+    NextRequest
+) {
+  try {
+    const current =
+      await getCurrentUser();
 
     if (
-      user.isBlocked ===
-      true
+      !current.user
     ) {
       return NextResponse.json(
         {
-          success: false,
+          success:
+            false,
+
           message:
-            "Account blocked",
+            current.error,
         },
         {
-          status: 403,
+          status:
+            current.status,
         }
       );
     }
 
-    const {
-      searchParams,
-    } = new URL(
-      request.url
-    );
+    const params =
+      request.nextUrl
+        .searchParams;
 
-    const itemType =
-      searchParams.get(
+    const rawItemType =
+      params.get(
         "itemType"
       );
 
     const itemId =
-      searchParams.get(
+      params.get(
         "itemId"
       );
 
-    /* =========================
-       CHECK SINGLE BOOKMARK
-    ========================= */
+    /* =====================================================
+       CHECK ONE BOOKMARK
+    ===================================================== */
 
     if (
-      itemType &&
+      rawItemType &&
       itemId
     ) {
       if (
-        ![
-          "article",
-          "book",
-        ].includes(
-          itemType
+        !isBookmarkItemType(
+          rawItemType
         )
       ) {
         return NextResponse.json(
           {
-            success: false,
+            success:
+              false,
+
             message:
               "Invalid bookmark type",
           },
           {
-            status: 400,
+            status:
+              400,
           }
         );
       }
@@ -148,33 +200,36 @@ export async function GET(
       ) {
         return NextResponse.json(
           {
-            success: false,
+            success:
+              false,
+
             message:
               "Invalid item ID",
           },
           {
-            status: 400,
+            status:
+              400,
           }
         );
       }
 
       const bookmark =
-        await BookmarkModel.findOne(
-          {
-            userId:
-              user._id,
+        await BookmarkModel.findOne({
+          userId:
+            current.user._id,
 
-            itemType,
+          itemType:
+            rawItemType,
 
-            itemId:
-              new mongoose.Types.ObjectId(
-                itemId
-              ),
-          }
-        ).lean();
+          itemId:
+            new mongoose.Types.ObjectId(
+              itemId
+            ),
+        }).lean();
 
       return NextResponse.json({
-        success: true,
+        success:
+          true,
 
         saved:
           Boolean(
@@ -190,168 +245,20 @@ export async function GET(
       });
     }
 
-    /* =========================
-       GET ALL BOOKMARKS
-    ========================= */
+    /* =====================================================
+       ALL SAVED ITEMS
+    ===================================================== */
 
     const bookmarks =
-      await BookmarkModel.find(
-        {
-          userId:
-            user._id,
-        }
-      )
-        .sort({
-          createdAt: -1,
-        })
-        .lean();
-
-    const articleIds =
-      bookmarks
-        .filter(
-          (
-            bookmark
-          ) =>
-            bookmark.itemType ===
-            "article"
-        )
-        .map(
-          (
-            bookmark
-          ) =>
-            bookmark.itemId
-        );
-
-    const bookIds =
-      bookmarks
-        .filter(
-          (
-            bookmark
-          ) =>
-            bookmark.itemType ===
-            "book"
-        )
-        .map(
-          (
-            bookmark
-          ) =>
-            bookmark.itemId
-        );
-
-    const [
-      articles,
-      books,
-    ] =
-      await Promise.all([
-        Article.find({
-          _id: {
-            $in:
-              articleIds,
-          },
-
-          status:
-            "Published",
-        })
-          .select(
-            "_id title slug summary category featuredImage author createdAt"
-          )
-          .lean(),
-
-        BookModel.find({
-          _id: {
-            $in:
-              bookIds,
-          },
-
-          status:
-            "Published",
-        })
-          .select(
-            "_id title slug author description category coverImage contentType createdAt"
-          )
-          .lean(),
-      ]);
-
-    const articleMap =
-      new Map(
-        articles.map(
-          (
-            article
-          ) => [
-            String(
-              article._id
-            ),
-            article,
-          ]
-        )
+      await loadSavedItems(
+        current.user._id
       );
-
-    const bookMap =
-      new Map(
-        books.map(
-          (
-            book
-          ) => [
-            String(
-              book._id
-            ),
-            book,
-          ]
-        )
-      );
-
-    const items =
-      bookmarks
-        .map(
-          (
-            bookmark
-          ) => {
-            const id =
-              String(
-                bookmark.itemId
-              );
-
-            const item =
-              bookmark.itemType ===
-              "article"
-                ? articleMap.get(
-                    id
-                  )
-                : bookMap.get(
-                    id
-                  );
-
-            if (!item) {
-              return null;
-            }
-
-            return {
-              bookmarkId:
-                String(
-                  bookmark._id
-                ),
-
-              itemType:
-                bookmark.itemType,
-
-              savedAt:
-                bookmark.createdAt,
-
-              item,
-            };
-          }
-        )
-        .filter(
-          (
-            item
-          ) =>
-            item !== null
-        );
 
     return NextResponse.json({
-      success: true,
-      bookmarks:
-        items,
+      success:
+        true,
+
+      bookmarks,
     });
   } catch (error) {
     console.error(
@@ -361,41 +268,46 @@ export async function GET(
 
     return NextResponse.json(
       {
-        success: false,
+        success:
+          false,
+
         message:
           "Unable to load bookmarks",
       },
       {
-        status: 500,
+        status:
+          500,
       }
     );
   }
 }
 
-/* =========================
+/* =========================================================
    SAVE BOOKMARK
-========================= */
+========================================================= */
 
 export async function POST(
-  request: NextRequest
+  request:
+    NextRequest
 ) {
   try {
-    const session =
-      await getServerSession(
-        authOptions
-      );
+    const current =
+      await getCurrentUser();
 
     if (
-      !session?.user?.email
+      !current.user
     ) {
       return NextResponse.json(
         {
-          success: false,
+          success:
+            false,
+
           message:
-            "Login required",
+            current.error,
         },
         {
-          status: 401,
+          status:
+            current.status,
         }
       );
     }
@@ -403,34 +315,34 @@ export async function POST(
     const body =
       await request.json();
 
-    const itemType =
-      typeof body.itemType ===
+    const rawItemType =
+      typeof body?.itemType ===
       "string"
         ? body.itemType
         : "";
 
     const itemId =
-      typeof body.itemId ===
+      typeof body?.itemId ===
       "string"
         ? body.itemId
         : "";
 
     if (
-      ![
-        "article",
-        "book",
-      ].includes(
-        itemType
+      !isBookmarkItemType(
+        rawItemType
       )
     ) {
       return NextResponse.json(
         {
-          success: false,
+          success:
+            false,
+
           message:
             "Invalid bookmark type",
         },
         {
-          status: 400,
+          status:
+            400,
         }
       );
     }
@@ -442,54 +354,15 @@ export async function POST(
     ) {
       return NextResponse.json(
         {
-          success: false,
+          success:
+            false,
+
           message:
             "Invalid item ID",
         },
         {
-          status: 400,
-        }
-      );
-    }
-
-    await connectDB();
-
-    const user = (await User.findOne({
-      email:
-        session.user.email
-          .trim()
-          .toLowerCase(),
-    })
-      .select(
-        "_id isBlocked"
-      )
-      .lean()) as BookmarkUser | null;
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "User not found",
-        },
-        {
-          status: 404,
-        }
-      );
-    }
-
-    if (
-      user.isBlocked ===
-      true
-    ) {
-      return NextResponse.json(
-        {
-          success: false,
-          message:
-            "Account blocked",
-        },
-        {
-          status: 403,
+          status:
+            400,
         }
       );
     }
@@ -499,89 +372,67 @@ export async function POST(
         itemId
       );
 
-    /* =========================
-       VERIFY CONTENT
-    ========================= */
-
-    if (
-      itemType ===
-      "article"
-    ) {
-      const articleExists =
-        await Article.exists({
-          _id:
-            objectId,
-
-          status:
-            "Published",
-        });
-
-      if (
-        !articleExists
-      ) {
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              "Article not found",
-          },
-          {
-            status: 404,
-          }
-        );
-      }
-    }
-
-    if (
-      itemType ===
-      "book"
-    ) {
-      const bookExists =
-        await BookModel.exists({
-          _id:
-            objectId,
-
-          status:
-            "Published",
-        });
-
-      if (
-        !bookExists
-      ) {
-        return NextResponse.json(
-          {
-            success: false,
-            message:
-              "Resource not found",
-          },
-          {
-            status: 404,
-          }
-        );
-      }
-    }
-
-    /* =========================
-       DUPLICATE CHECK
-    ========================= */
-
-    const existing =
-      await BookmarkModel.findOne(
-        {
-          userId:
-            user._id,
-
-          itemType,
-
-          itemId:
-            objectId,
-        }
+    /*
+     * Article:
+     *   Published only
+     *
+     * Book:
+     *   Published only
+     *
+     * Formula:
+     *   Published + Verified only
+     */
+    const targetExists =
+      await bookmarkTargetExists(
+        rawItemType,
+        objectId
       );
 
-    if (existing) {
+    if (
+      !targetExists
+    ) {
+      return NextResponse.json(
+        {
+          success:
+            false,
+
+          message:
+            rawItemType ===
+            "formula"
+              ? "Verified formula not found"
+              : rawItemType ===
+                  "article"
+                ? "Article not found"
+                : "Resource not found",
+        },
+        {
+          status:
+            404,
+        }
+      );
+    }
+
+    const existing =
+      await BookmarkModel.findOne({
+        userId:
+          current.user._id,
+
+        itemType:
+          rawItemType,
+
+        itemId:
+          objectId,
+      });
+
+    if (
+      existing
+    ) {
       return NextResponse.json({
-        success: true,
-        saved: true,
+        success:
+          true,
+
+        saved:
+          true,
 
         bookmarkId:
           String(
@@ -593,27 +444,25 @@ export async function POST(
       });
     }
 
-    /* =========================
-       CREATE BOOKMARK
-    ========================= */
-
     const bookmark =
-      await BookmarkModel.create(
-        {
-          userId:
-            user._id,
+      await BookmarkModel.create({
+        userId:
+          current.user._id,
 
-          itemType,
+        itemType:
+          rawItemType,
 
-          itemId:
-            objectId,
-        }
-      );
+        itemId:
+          objectId,
+      });
 
     return NextResponse.json(
       {
-        success: true,
-        saved: true,
+        success:
+          true,
+
+        saved:
+          true,
 
         bookmarkId:
           String(
@@ -624,14 +473,15 @@ export async function POST(
           "Saved successfully",
       },
       {
-        status: 201,
+        status:
+          201,
       }
     );
   } catch (error) {
     /*
-     * Mongo duplicate index protection
+     * Unique database index
+     * protects against races.
      */
-
     if (
       error &&
       typeof error ===
@@ -641,11 +491,16 @@ export async function POST(
         error as {
           code?: number;
         }
-      ).code === 11000
+      ).code ===
+        11000
     ) {
       return NextResponse.json({
-        success: true,
-        saved: true,
+        success:
+          true,
+
+        saved:
+          true,
+
         message:
           "Already saved",
       });
@@ -658,12 +513,15 @@ export async function POST(
 
     return NextResponse.json(
       {
-        success: false,
+        success:
+          false,
+
         message:
           "Unable to save bookmark",
       },
       {
-        status: 500,
+        status:
+          500,
       }
     );
   }

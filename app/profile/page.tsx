@@ -30,12 +30,8 @@ import User from "@/models/User";
 import Article from "@/models/Article";
 
 import {
-  BookModel,
-} from "@/models/Book";
-
-import {
-  BookmarkModel,
-} from "@/models/Bookmark";
+  loadSavedItems,
+} from "@/lib/saved-items";
 
 export const dynamic =
   "force-dynamic";
@@ -89,171 +85,14 @@ async function getProfileData(
       "_id"
     ) as mongoose.Types.ObjectId;
 
-  /* =========================
-     GET BOOKMARKS
-  ========================= */
-
-  const bookmarks =
-    await BookmarkModel.find({
-      userId,
-    })
-      .sort({
-        createdAt: -1,
-      })
-      .lean();
-
-  /* =========================
-     SAVED ARTICLE IDS
-  ========================= */
-
-  const articleIds =
-    bookmarks
-      .filter(
-        (bookmark) =>
-          bookmark.itemType ===
-          "article"
-      )
-      .map(
-        (bookmark) =>
-          bookmark.itemId
-      );
-
-  /* =========================
-     SAVED BOOK IDS
-  ========================= */
-
-  const bookIds =
-    bookmarks
-      .filter(
-        (bookmark) =>
-          bookmark.itemType ===
-          "book"
-      )
-      .map(
-        (bookmark) =>
-          bookmark.itemId
-      );
-
-  /* =========================
-     GET SAVED CONTENT
-  ========================= */
-
-  const [
-    articles,
-    books,
-  ] =
-    await Promise.all([
-      Article.find({
-        _id: {
-          $in:
-            articleIds,
-        },
-
-        status:
-          "Published",
-      })
-        .select(
-          "_id title slug summary category featuredImage author"
-        )
-        .lean(),
-
-      BookModel.find({
-        _id: {
-          $in:
-            bookIds,
-        },
-
-        status:
-          "Published",
-      })
-        .select(
-          "_id title slug description category coverImage author contentType"
-        )
-        .lean(),
-    ]);
-
-  /* =========================
-     ARTICLE MAP
-  ========================= */
-
-  const articleMap =
-    new Map(
-      articles.map(
-        (article) => [
-          String(
-            article._id
-          ),
-
-          article,
-        ]
-      )
-    );
-
-  /* =========================
-     BOOK MAP
-  ========================= */
-
-  const bookMap =
-    new Map(
-      books.map(
-        (book) => [
-          String(
-            book._id
-          ),
-
-          book,
-        ]
-      )
-    );
-
-  /* =========================
-     BUILD SAVED ITEMS
+    /* =========================
+     SAVED ITEMS
   ========================= */
 
   const savedItems =
-    bookmarks
-      .map(
-        (bookmark) => {
-          const itemId =
-            String(
-              bookmark.itemId
-            );
-
-          const item =
-            bookmark.itemType ===
-            "article"
-              ? articleMap.get(
-                  itemId
-                )
-              : bookMap.get(
-                  itemId
-                );
-
-          if (!item) {
-            return null;
-          }
-
-          return {
-            bookmarkId:
-              String(
-                bookmark._id
-              ),
-
-            itemType:
-              bookmark.itemType,
-
-            savedAt:
-              bookmark.createdAt,
-
-            item,
-          };
-        }
-      )
-      .filter(
-        (item) =>
-          item !== null
-      );
-
+    await loadSavedItems(
+      userId
+    );
   /* =========================
      RETURN DATA
   ========================= */

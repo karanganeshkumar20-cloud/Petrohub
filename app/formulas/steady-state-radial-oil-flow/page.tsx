@@ -3,6 +3,7 @@ import type {
 } from "next";
 
 import Footer from "@/components/Footer";
+import FormulaBookmarkButton from "@/components/formulas/FormulaBookmarkButton";
 import Navbar from "@/components/Navbar";
 
 import SteadyStateRadialOilCalculator from "@/components/formulas/SteadyStateRadialOilCalculator";
@@ -50,7 +51,13 @@ export default function SteadyStateRadialOilFlowPage() {
               </p>
             </div>
           </div>
-        </section>
+        
+          <div className="mx-auto mt-8 max-w-7xl">
+            <FormulaBookmarkButton
+              slug="steady-state-radial-oil-flow"
+            />
+          </div>
+</section>
 
         {/* MAIN CONTENT */}
 

@@ -3,6 +3,7 @@ import type {
 } from "next";
 
 import Footer from "@/components/Footer";
+import FormulaBookmarkButton from "@/components/formulas/FormulaBookmarkButton";
 import Navbar from "@/components/Navbar";
 
 import ProductivityIndexCalculator from "@/components/formulas/ProductivityIndexCalculator";
@@ -46,7 +47,13 @@ export default function ProductivityIndexPage() {
               </p>
             </div>
           </div>
-        </section>
+        
+          <div className="mx-auto mt-8 max-w-7xl">
+            <FormulaBookmarkButton
+              slug="productivity-index"
+            />
+          </div>
+</section>
 
         {/* MAIN */}
 

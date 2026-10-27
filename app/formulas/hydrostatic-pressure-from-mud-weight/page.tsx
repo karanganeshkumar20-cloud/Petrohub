@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import FormulaBookmarkButton from "@/components/formulas/FormulaBookmarkButton";
 
 import DrillingBatch1Calculator from "@/components/formulas/DrillingBatch1Calculator";
 
@@ -37,7 +38,7 @@ export default function HydrostaticPressurePage() {
             href="/formulas"
             className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
           >
-            ← All Engineering Calculators
+            â† All Engineering Calculators
           </Link>
 
           <div className="mt-8 max-w-4xl">
@@ -64,7 +65,13 @@ export default function HydrostaticPressurePage() {
             </p>
           </div>
         </div>
-      </section>
+      
+          <div className="mx-auto mt-8 max-w-7xl">
+            <FormulaBookmarkButton
+              slug="hydrostatic-pressure-from-mud-weight"
+            />
+          </div>
+</section>
 
       {/* =====================================================
           FORMULA
@@ -78,7 +85,7 @@ export default function HydrostaticPressurePage() {
             </p>
 
             <div className="mt-6 overflow-x-auto text-center text-2xl font-bold text-white md:text-4xl">
-              HP = 0.052 × MW × TVD
+              HP = 0.052 Ã— MW Ã— TVD
             </div>
 
             <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -133,22 +140,22 @@ export default function HydrostaticPressurePage() {
 
               <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-400">
                 <li>
-                  • Mud weight is entered
+                  â€¢ Mud weight is entered
                   in lb/gal (ppg).
                 </li>
 
                 <li>
-                  • True vertical depth
+                  â€¢ True vertical depth
                   is entered in feet.
                 </li>
 
                 <li>
-                  • Hydrostatic pressure
+                  â€¢ Hydrostatic pressure
                   is returned in psi.
                 </li>
 
                 <li>
-                  • Pressure gradient is
+                  â€¢ Pressure gradient is
                   also calculated in
                   psi/ft.
                 </li>

@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import FormulaBookmarkButton from "@/components/formulas/FormulaBookmarkButton";
 
 import BernoulliCalculator from "@/components/formulas/BernoulliCalculator";
 
@@ -33,7 +34,7 @@ export default function BernoulliEquationPage() {
             href="/formulas"
             className="text-sm font-semibold text-orange-400 hover:text-orange-300"
           >
-            ← All Engineering
+            â† All Engineering
             Calculators
           </Link>
 
@@ -65,7 +66,13 @@ export default function BernoulliEquationPage() {
             </p>
           </div>
         </div>
-      </section>
+      
+          <div className="mx-auto mt-8 max-w-7xl">
+            <FormulaBookmarkButton
+              slug="bernoulli-equation"
+            />
+          </div>
+</section>
 
       <section className="px-6 py-12">
         <div className="mx-auto max-w-7xl">
@@ -75,9 +82,9 @@ export default function BernoulliEquationPage() {
             </p>
 
             <div className="mt-5 overflow-x-auto text-center text-xl font-semibold text-white md:text-3xl">
-              P₁/(ρg) + V₁²/(2g)
-              + z₁ = P₂/(ρg) +
-              V₂²/(2g) + z₂
+              Pâ‚/(Ïg) + Vâ‚Â²/(2g)
+              + zâ‚ = Pâ‚‚/(Ïg) +
+              Vâ‚‚Â²/(2g) + zâ‚‚
             </div>
 
             <p className="mt-5 text-sm leading-6 text-slate-400">
@@ -119,7 +126,7 @@ export default function BernoulliEquationPage() {
               className="mt-5 inline-block font-semibold text-orange-400 hover:text-orange-300"
             >
               Read the Bernoulli
-              Equation article →
+              Equation article â†’
             </Link>
           </div>
         </div>

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import FormulaBookmarkButton from "@/components/formulas/FormulaBookmarkButton";
 
 import DrillingBatch1Calculator from "@/components/formulas/DrillingBatch1Calculator";
 
@@ -34,7 +35,7 @@ export default function AnnularVelocityPage() {
             href="/formulas"
             className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
           >
-            ← All Engineering Calculators
+            â† All Engineering Calculators
           </Link>
 
           <div className="mt-8 max-w-4xl">
@@ -61,7 +62,13 @@ export default function AnnularVelocityPage() {
             </p>
           </div>
         </div>
-      </section>
+      
+          <div className="mx-auto mt-8 max-w-7xl">
+            <FormulaBookmarkButton
+              slug="velocity-of-fluid-in-annulus"
+            />
+          </div>
+</section>
 
       {/* =====================================================
           CONTENT
@@ -80,12 +87,12 @@ export default function AnnularVelocityPage() {
             </p>
 
             <div className="mt-6 overflow-x-auto text-center text-2xl font-bold text-white md:text-4xl">
-              vₐ = Q / [2.448 × (Dₒ² − Dₚ²)]
+              vâ‚ = Q / [2.448 Ã— (Dâ‚’Â² âˆ’ Dâ‚šÂ²)]
             </div>
 
             <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <VariableCard
-                symbol="vₐ"
+                symbol="vâ‚"
                 name="Annular Velocity"
                 unit="ft/s"
               />
@@ -97,13 +104,13 @@ export default function AnnularVelocityPage() {
               />
 
               <VariableCard
-                symbol="Dₒ"
+                symbol="Dâ‚’"
                 name="Hole Diameter"
                 unit="in"
               />
 
               <VariableCard
-                symbol="Dₚ"
+                symbol="Dâ‚š"
                 name="Pipe Outer Diameter"
                 unit="in"
               />
@@ -139,28 +146,28 @@ export default function AnnularVelocityPage() {
 
               <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-400">
                 <li>
-                  • Flow rate is entered
+                  â€¢ Flow rate is entered
                   in gallons per minute.
                 </li>
 
                 <li>
-                  • Hole diameter is
+                  â€¢ Hole diameter is
                   entered in inches.
                 </li>
 
                 <li>
-                  • Pipe outer diameter
+                  â€¢ Pipe outer diameter
                   is entered in inches.
                 </li>
 
                 <li>
-                  • Hole diameter must be
+                  â€¢ Hole diameter must be
                   greater than pipe outer
                   diameter.
                 </li>
 
                 <li>
-                  • Output is displayed in
+                  â€¢ Output is displayed in
                   ft/s and ft/min.
                 </li>
               </ul>
@@ -225,11 +232,11 @@ export default function AnnularVelocityPage() {
               </p>
 
               <p className="mt-2 text-2xl font-black text-white">
-                ≈ 1.633 ft/s
+                â‰ˆ 1.633 ft/s
               </p>
 
               <p className="mt-2 text-sm text-slate-300">
-                ≈ 97.99 ft/min
+                â‰ˆ 97.99 ft/min
               </p>
             </div>
           </div>

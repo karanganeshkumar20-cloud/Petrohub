@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import FormulaBookmarkButton from "@/components/formulas/FormulaBookmarkButton";
 
 import DrillingBatch1Calculator from "@/components/formulas/DrillingBatch1Calculator";
 
@@ -34,7 +35,7 @@ export default function InitialCirculatingPressurePage() {
             href="/formulas"
             className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
           >
-            ← All Engineering Calculators
+            â† All Engineering Calculators
           </Link>
 
           <div className="mt-8 max-w-4xl">
@@ -65,7 +66,13 @@ export default function InitialCirculatingPressurePage() {
             </p>
           </div>
         </div>
-      </section>
+      
+          <div className="mx-auto mt-8 max-w-7xl">
+            <FormulaBookmarkButton
+              slug="initial-circulating-pressure"
+            />
+          </div>
+</section>
 
       {/* =====================================================
           CONTENT
@@ -136,19 +143,19 @@ export default function InitialCirculatingPressurePage() {
 
               <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-400">
                 <li>
-                  • SCRP is entered in psi.
+                  â€¢ SCRP is entered in psi.
                 </li>
 
                 <li>
-                  • SIDPP is entered in psi.
+                  â€¢ SIDPP is entered in psi.
                 </li>
 
                 <li>
-                  • ICP is returned in psi.
+                  â€¢ ICP is returned in psi.
                 </li>
 
                 <li>
-                  • Both inputs must be
+                  â€¢ Both inputs must be
                   zero or positive.
                 </li>
               </ul>

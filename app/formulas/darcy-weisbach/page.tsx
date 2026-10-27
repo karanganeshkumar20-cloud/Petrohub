@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import FormulaBookmarkButton from "@/components/formulas/FormulaBookmarkButton";
 
 import DarcyWeisbachCalculator from "@/components/formulas/DarcyWeisbachCalculator";
 
@@ -33,7 +34,7 @@ export default function DarcyWeisbachPage() {
             href="/formulas"
             className="text-sm font-semibold text-orange-400 hover:text-orange-300"
           >
-            ← All Engineering
+            â† All Engineering
             Calculators
           </Link>
 
@@ -64,7 +65,13 @@ export default function DarcyWeisbachPage() {
             </p>
           </div>
         </div>
-      </section>
+      
+          <div className="mx-auto mt-8 max-w-7xl">
+            <FormulaBookmarkButton
+              slug="darcy-weisbach"
+            />
+          </div>
+</section>
 
       <section className="px-6 py-12">
         <div className="mx-auto max-w-7xl">
@@ -75,21 +82,21 @@ export default function DarcyWeisbachPage() {
             </p>
 
             <div className="mt-6 overflow-x-auto text-center text-2xl font-bold md:text-3xl">
-              ΔP = f (L / D)
-              (ρV² / 2)
+              Î”P = f (L / D)
+              (ÏVÂ² / 2)
             </div>
 
             <div className="mt-5 overflow-x-auto text-center text-xl text-slate-300">
               h<sub>f</sub> =
               f (L / D)
-              (V² / 2g)
+              (VÂ² / 2g)
             </div>
 
             <p className="mt-6 text-sm leading-7 text-slate-400">
               f is the Darcy
               friction factor, L is
               pipe length, D is
-              internal diameter, ρ
+              internal diameter, Ï
               is fluid density and V
               is average fluid
               velocity.
@@ -106,22 +113,22 @@ export default function DarcyWeisbachPage() {
 
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-400">
                 <li>
-                  • Straight pipe
+                  â€¢ Straight pipe
                   friction loss.
                 </li>
 
                 <li>
-                  • Constant internal
+                  â€¢ Constant internal
                   pipe diameter.
                 </li>
 
                 <li>
-                  • Constant fluid
+                  â€¢ Constant fluid
                   density.
                 </li>
 
                 <li>
-                  • Average fluid
+                  â€¢ Average fluid
                   velocity is used.
                 </li>
               </ul>

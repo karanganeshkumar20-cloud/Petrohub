@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import FormulaBookmarkButton from "@/components/formulas/FormulaBookmarkButton";
 
 import DrillingBatch1Calculator from "@/components/formulas/DrillingBatch1Calculator";
 
@@ -34,7 +35,7 @@ export default function EquivalentCirculatingDensityPage() {
             href="/formulas"
             className="text-sm font-semibold text-orange-400 transition hover:text-orange-300"
           >
-            ← All Engineering Calculators
+            â† All Engineering Calculators
           </Link>
 
           <div className="mt-8 max-w-4xl">
@@ -61,7 +62,13 @@ export default function EquivalentCirculatingDensityPage() {
             </p>
           </div>
         </div>
-      </section>
+      
+          <div className="mx-auto mt-8 max-w-7xl">
+            <FormulaBookmarkButton
+              slug="equivalent-circulating-density"
+            />
+          </div>
+</section>
 
       {/* =====================================================
           CONTENT
@@ -80,7 +87,7 @@ export default function EquivalentCirculatingDensityPage() {
             </p>
 
             <div className="mt-6 overflow-x-auto text-center text-2xl font-bold text-white md:text-4xl">
-              ECD = MW + ΔPₐ / (0.052 × TVD)
+              ECD = MW + Î”Pâ‚ / (0.052 Ã— TVD)
             </div>
 
             <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -97,7 +104,7 @@ export default function EquivalentCirculatingDensityPage() {
               />
 
               <VariableCard
-                symbol="ΔPₐ"
+                symbol="Î”Pâ‚"
                 name="Annular Pressure Loss"
                 unit="psi"
               />
@@ -140,27 +147,27 @@ export default function EquivalentCirculatingDensityPage() {
 
               <ul className="mt-4 space-y-3 text-sm leading-7 text-slate-400">
                 <li>
-                  • Static mud weight is
+                  â€¢ Static mud weight is
                   entered in ppg.
                 </li>
 
                 <li>
-                  • Annular pressure loss
+                  â€¢ Annular pressure loss
                   is entered in psi.
                 </li>
 
                 <li>
-                  • TVD is entered in
+                  â€¢ TVD is entered in
                   feet.
                 </li>
 
                 <li>
-                  • ECD is returned in
+                  â€¢ ECD is returned in
                   ppg.
                 </li>
 
                 <li>
-                  • The additional density
+                  â€¢ The additional density
                   contribution caused by
                   annular pressure loss is
                   also displayed.
@@ -229,7 +236,7 @@ export default function EquivalentCirculatingDensityPage() {
               </p>
 
               <p className="mt-2 text-2xl font-black text-white">
-                ≈ 10.962 ppg
+                â‰ˆ 10.962 ppg
               </p>
             </div>
           </div>

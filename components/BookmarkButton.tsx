@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import {
   useEffect,
@@ -12,11 +12,26 @@ import {
 type Props = {
   itemType:
     | "article"
-    | "book";
+    | "book"
+    | "formula";
 
-  itemId: string;
+  itemId:
+    string;
 
-  className?: string;
+  className?:
+    string;
+};
+
+type BookmarkResponse = {
+  success?: boolean;
+
+  saved?: boolean;
+
+  bookmarkId?:
+    string | null;
+
+  message?:
+    string;
 };
 
 export default function BookmarkButton({
@@ -31,7 +46,9 @@ export default function BookmarkButton({
   const [
     saved,
     setSaved,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
   const [
     bookmarkId,
@@ -39,23 +56,39 @@ export default function BookmarkButton({
   ] =
     useState<
       string | null
-    >(null);
+    >(
+      null
+    );
 
   const [
     loading,
     setLoading,
-  ] = useState(true);
+  ] = useState(
+    true
+  );
 
   const [
     processing,
     setProcessing,
-  ] = useState(false);
+  ] = useState(
+    false
+  );
 
-  /* =========================
+  const [
+    error,
+    setError,
+  ] = useState(
+    ""
+  );
+
+  /* =====================================================
      CHECK BOOKMARK
-  ========================= */
+  ===================================================== */
 
   useEffect(() => {
+    let active =
+      true;
+
     async function checkBookmark() {
       if (
         status ===
@@ -68,31 +101,62 @@ export default function BookmarkButton({
         status !==
         "authenticated"
       ) {
-        setLoading(false);
+        if (
+          active
+        ) {
+          setLoading(
+            false
+          );
+        }
+
         return;
       }
+
+      setLoading(
+        true
+      );
 
       try {
         const response =
           await fetch(
-            `/api/bookmarks?itemType=${itemType}&itemId=${itemId}`,
+            `/api/bookmarks?itemType=${encodeURIComponent(
+              itemType
+            )}&itemId=${encodeURIComponent(
+              itemId
+            )}`,
             {
-              method: "GET",
+              method:
+                "GET",
 
               cache:
                 "no-store",
             }
           );
 
+        const data =
+          (await response.json()) as
+          BookmarkResponse;
+
         if (
-          !response.ok
+          !active
         ) {
-          setLoading(false);
           return;
         }
 
-        const data =
-          await response.json();
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          setSaved(
+            false
+          );
+
+          setBookmarkId(
+            null
+          );
+
+          return;
+        }
 
         setSaved(
           data.saved ===
@@ -103,44 +167,52 @@ export default function BookmarkButton({
           data.bookmarkId ||
             null
         );
-      } catch (
-        error
-      ) {
+      } catch (error) {
         console.error(
           "Bookmark check error:",
           error
         );
       } finally {
-        setLoading(false);
+        if (
+          active
+        ) {
+          setLoading(
+            false
+          );
+        }
       }
     }
 
     checkBookmark();
+
+    return () => {
+      active =
+        false;
+    };
   }, [
     status,
     itemType,
     itemId,
   ]);
 
-  /* =========================
+  /* =====================================================
      SAVE / REMOVE
-  ========================= */
+  ===================================================== */
 
   async function handleBookmark() {
     if (
-      processing
+      processing ||
+      loading
     ) {
       return;
     }
-
-    /* LOGIN REQUIRED */
 
     if (
       status !==
       "authenticated"
     ) {
       const callbackUrl =
-        window.location.pathname;
+        `${window.location.pathname}${window.location.search}`;
 
       window.location.href =
         `/login?callbackUrl=${encodeURIComponent(
@@ -150,13 +222,15 @@ export default function BookmarkButton({
       return;
     }
 
-    setProcessing(true);
+    setProcessing(
+      true
+    );
+
+    setError(
+      ""
+    );
 
     try {
-      /* =========================
-         REMOVE BOOKMARK
-      ========================= */
-
       if (
         saved &&
         bookmarkId
@@ -171,7 +245,8 @@ export default function BookmarkButton({
           );
 
         const data =
-          await response.json();
+          (await response.json()) as
+          BookmarkResponse;
 
         if (
           !response.ok ||
@@ -183,7 +258,9 @@ export default function BookmarkButton({
           );
         }
 
-        setSaved(false);
+        setSaved(
+          false
+        );
 
         setBookmarkId(
           null
@@ -191,10 +268,6 @@ export default function BookmarkButton({
 
         return;
       }
-
-      /* =========================
-         SAVE BOOKMARK
-      ========================= */
 
       const response =
         await fetch(
@@ -209,17 +282,16 @@ export default function BookmarkButton({
             },
 
             body:
-              JSON.stringify(
-                {
-                  itemType,
-                  itemId,
-                }
-              ),
+              JSON.stringify({
+                itemType,
+                itemId,
+              }),
           }
         );
 
       const data =
-        await response.json();
+        (await response.json()) as
+        BookmarkResponse;
 
       if (
         !response.ok ||
@@ -231,101 +303,70 @@ export default function BookmarkButton({
         );
       }
 
-      setSaved(true);
+      setSaved(
+        true
+      );
 
       setBookmarkId(
         data.bookmarkId ||
           null
       );
-    } catch (
-      error
-    ) {
+    } catch (error) {
       console.error(
         "Bookmark error:",
         error
       );
 
-      alert(
+      setError(
         error instanceof
           Error
           ? error.message
           : "Unable to update saved item"
       );
     } finally {
-      setProcessing(false);
+      setProcessing(
+        false
+      );
     }
   }
 
-  /* =========================
-     BUTTON
-  ========================= */
-
   return (
-    <button
-      type="button"
-      onClick={
-        handleBookmark
-      }
-      disabled={
-        loading ||
-        processing
-      }
-      className={`
-        inline-flex
-        items-center
-        justify-center
-        gap-2
-        rounded-xl
-        border
-        px-5
-        py-3
-        font-bold
-        transition
-        disabled:cursor-not-allowed
-        disabled:opacity-60
-
-        ${
-          saved
-            ? `
-              border-yellow-500/50
-              bg-yellow-500/10
-              text-yellow-400
-              hover:bg-yellow-500/20
-            `
-            : `
-              border-slate-700
-              bg-slate-900
-              text-slate-300
-              hover:border-orange-500
-              hover:text-orange-400
-            `
+    <div className={className}>
+      <button
+        type="button"
+        onClick={
+          handleBookmark
         }
-
-        ${className}
-      `}
-    >
-      {/* STAR ICON */}
-
-      <span
-        className="text-xl leading-none"
-        aria-hidden="true"
+        aria-pressed={
+          saved
+        }
+        disabled={
+          loading ||
+          processing
+        }
+        className={
+          saved
+            ? "inline-flex items-center justify-center rounded-xl border border-yellow-500/50 bg-yellow-500/10 px-5 py-3 font-bold text-yellow-400 transition hover:bg-yellow-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            : "inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-5 py-3 font-bold text-slate-300 transition hover:border-orange-500 hover:text-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
+        }
       >
-        {saved
-          ? "★"
-          : "☆"}
-      </span>
-
-      {/* TEXT */}
-
-      <span>
         {loading
           ? "Checking..."
           : processing
-          ? "Please wait..."
-          : saved
-          ? "Saved"
-          : "Save"}
-      </span>
-    </button>
+            ? "Please wait..."
+            : saved
+              ? "Saved"
+              : "Save"}
+      </button>
+
+      {error && (
+        <p
+          role="alert"
+          className="mt-2 text-sm text-red-400"
+        >
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

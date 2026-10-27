@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import FormulaBookmarkButton from "@/components/formulas/FormulaBookmarkButton";
 
 import DarcyLinearFlowCalculator from "@/components/formulas/DarcyLinearFlowCalculator";
 
@@ -33,7 +34,7 @@ export default function DarcyLinearFlowPage() {
             href="/formulas"
             className="text-sm font-semibold text-orange-400 hover:text-orange-300"
           >
-            ← All Engineering Calculators
+            â† All Engineering Calculators
           </Link>
 
           <div className="mt-8 max-w-4xl">
@@ -63,7 +64,13 @@ export default function DarcyLinearFlowPage() {
             </p>
           </div>
         </div>
-      </section>
+      
+          <div className="mx-auto mt-8 max-w-7xl">
+            <FormulaBookmarkButton
+              slug="darcy-law-linear-single-phase-flow"
+            />
+          </div>
+</section>
 
       <section className="px-6 py-14">
         <div className="mx-auto max-w-7xl">
@@ -76,7 +83,7 @@ export default function DarcyLinearFlowPage() {
 
                 <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950 p-6 text-center">
                   <p className="whitespace-nowrap text-xl font-bold text-white md:text-2xl">
-                    q = 0.001127 × k × A × ΔP / (μ × L)
+                    q = 0.001127 Ã— k Ã— A Ã— Î”P / (Î¼ Ã— L)
                   </p>
                 </div>
 
@@ -96,17 +103,17 @@ export default function DarcyLinearFlowPage() {
                   <Variable
                     symbol="A"
                     name="Cross-Sectional Area"
-                    unit="ft²"
+                    unit="ftÂ²"
                   />
 
                   <Variable
-                    symbol="ΔP"
+                    symbol="Î”P"
                     name="Pressure Drop"
                     unit="psi"
                   />
 
                   <Variable
-                    symbol="μ"
+                    symbol="Î¼"
                     name="Fluid Viscosity"
                     unit="cP"
                   />
@@ -126,23 +133,23 @@ export default function DarcyLinearFlowPage() {
 
                 <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-400">
                   <li>
-                    • Steady-state flow
+                    â€¢ Steady-state flow
                   </li>
 
                   <li>
-                    • Single-phase fluid
+                    â€¢ Single-phase fluid
                   </li>
 
                   <li>
-                    • Homogeneous porous medium
+                    â€¢ Homogeneous porous medium
                   </li>
 
                   <li>
-                    • Constant fluid viscosity
+                    â€¢ Constant fluid viscosity
                   </li>
 
                   <li>
-                    • Linear flow geometry
+                    â€¢ Linear flow geometry
                   </li>
                 </ul>
               </div>
