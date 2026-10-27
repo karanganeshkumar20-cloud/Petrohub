@@ -7,125 +7,390 @@ import {
 } from "react";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+
+import {
+  useRouter,
+} from "next/navigation";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+
+import {
+  ENGINEERING_CATEGORIES,
+} from "@/lib/categories";
+
+/* =========================================================
+   TYPES
+========================================================= */
+
+type ResultType =
+  | "article"
+  | "library"
+  | "formula";
 
 type SearchResult = {
   id: string;
 
   title: string;
-
   slug: string;
 
   description: string;
-
   category: string;
 
   resultType:
-    | "article"
-    | "library";
+    ResultType;
 
   typeLabel: string;
 
   href: string;
 
   author?: string;
-
   publisher?: string;
 
   coverImage?: string;
 
   resourceType?: string;
-
   contentType?: string;
 
+  formulaText?: string;
+  subDomain?: string;
+
+  featured?: boolean;
+  views?: number;
+
   createdAt?: string;
+
+  relevance?: number;
 };
 
 type SearchCounts = {
   articles: number;
   library: number;
+  formulas: number;
 };
 
 type SearchClientProps = {
   initialQuery: string;
+  initialType: string;
+  initialCategory: string;
+  initialContentType: string;
 };
+
+type SearchApiResponse = {
+  success?: boolean;
+  message?: string;
+
+  query?: string;
+
+  results?: SearchResult[];
+
+  total?: number;
+
+  counts?: Partial<
+    SearchCounts
+  >;
+};
+
+/* =========================================================
+   OPTIONS
+========================================================= */
+
+const resultTypes = [
+  {
+    value:
+      "all",
+    label:
+      "All Content",
+  },
+
+  {
+    value:
+      "article",
+    label:
+      "Articles",
+  },
+
+  {
+    value:
+      "library",
+    label:
+      "Library",
+  },
+
+  {
+    value:
+      "formula",
+    label:
+      "Formulas",
+  },
+];
+
+const libraryTypes = [
+  {
+    value:
+      "all",
+    label:
+      "All Library Types",
+  },
+
+  {
+    value:
+      "book",
+    label:
+      "Books",
+  },
+
+  {
+    value:
+      "manual",
+    label:
+      "Manuals",
+  },
+
+  {
+    value:
+      "standard",
+    label:
+      "Standards",
+  },
+
+  {
+    value:
+      "note",
+    label:
+      "Notes",
+  },
+
+  {
+    value:
+      "download",
+    label:
+      "Downloads",
+  },
+];
+
+/* =========================================================
+   CLIENT
+========================================================= */
 
 export default function SearchClient({
   initialQuery,
+  initialType,
+  initialCategory,
+  initialContentType,
 }: SearchClientProps) {
-  const router = useRouter();
+  const router =
+    useRouter();
 
-  const [query, setQuery] =
-    useState(initialQuery);
+  const [
+    query,
+    setQuery,
+  ] = useState(
+    initialQuery
+  );
 
-  const [results, setResults] =
-    useState<SearchResult[]>([]);
+  const [
+    resultType,
+    setResultType,
+  ] = useState(
+    normalizeType(
+      initialType
+    )
+  );
 
-  const [counts, setCounts] =
-    useState<SearchCounts>({
-      articles: 0,
-      library: 0,
-    });
+  const [
+    category,
+    setCategory,
+  ] = useState(
+    normalizeCategory(
+      initialCategory
+    )
+  );
 
-  const [loading, setLoading] =
-    useState(false);
+  const [
+    contentType,
+    setContentType,
+  ] = useState(
+    normalizeContentType(
+      initialContentType
+    )
+  );
 
-  const [searched, setSearched] =
-    useState(false);
+  const [
+    results,
+    setResults,
+  ] = useState<
+    SearchResult[]
+  >([]);
 
-  const [error, setError] =
-    useState("");
+  const [
+    counts,
+    setCounts,
+  ] = useState<SearchCounts>({
+    articles:
+      0,
+
+    library:
+      0,
+
+    formulas:
+      0,
+  });
+
+  const [
+    total,
+    setTotal,
+  ] = useState(
+    0
+  );
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(
+    false
+  );
+
+  const [
+    searched,
+    setSearched,
+  ] = useState(
+    false
+  );
+
+  const [
+    error,
+    setError,
+  ] = useState(
+    ""
+  );
+
+  /* =====================================================
+     SEARCH
+  ===================================================== */
 
   async function searchPetroHub(
-    searchQuery: string
+    searchQuery: string,
+    searchType: string,
+    searchCategory: string,
+    searchContentType: string
   ) {
     const trimmedQuery =
       searchQuery.trim();
 
-    if (!trimmedQuery) {
-      setResults([]);
+    const hasFilter =
+      searchType !==
+        "all" ||
+      searchCategory !==
+        "all" ||
+      searchContentType !==
+        "all";
+
+    if (
+      !trimmedQuery &&
+      !hasFilter
+    ) {
+      setResults(
+        []
+      );
 
       setCounts({
-        articles: 0,
-        library: 0,
+        articles:
+          0,
+
+        library:
+          0,
+
+        formulas:
+          0,
       });
 
-      setSearched(false);
-      setError("");
+      setTotal(
+        0
+      );
+
+      setSearched(
+        false
+      );
+
+      setError(
+        ""
+      );
 
       return;
     }
 
-    setLoading(true);
-    setError("");
+    setLoading(
+      true
+    );
+
+    setError(
+      ""
+    );
 
     try {
+      const params =
+        new URLSearchParams();
+
+      if (
+        trimmedQuery
+      ) {
+        params.set(
+          "q",
+          trimmedQuery
+        );
+      }
+
+      if (
+        searchType !==
+        "all"
+      ) {
+        params.set(
+          "type",
+          searchType
+        );
+      }
+
+      if (
+        searchCategory !==
+        "all"
+      ) {
+        params.set(
+          "category",
+          searchCategory
+        );
+      }
+
+      if (
+        searchContentType !==
+        "all"
+      ) {
+        params.set(
+          "contentType",
+          searchContentType
+        );
+      }
+
       const response =
         await fetch(
-          `/api/search?q=${encodeURIComponent(
-            trimmedQuery
-          )}`,
+          `/api/search?${params.toString()}`,
           {
-            method: "GET",
-            cache: "no-store",
+            method:
+              "GET",
+
+            cache:
+              "no-store",
           }
         );
 
-      /*
-       * Read as text first so the
-       * page does not crash if the
-       * server returns non-JSON.
-       */
       const responseText =
         await response.text();
 
-      let data: any;
+      let parsed:
+        unknown = {};
 
       try {
-        data =
+        parsed =
           responseText
             ? JSON.parse(
                 responseText
@@ -136,6 +401,20 @@ export default function SearchClient({
           `Search returned an invalid response (${response.status})`
         );
       }
+
+      if (
+        typeof parsed !==
+          "object" ||
+        parsed ===
+          null
+      ) {
+        throw new Error(
+          "Invalid search response"
+        );
+      }
+
+      const data =
+        parsed as SearchApiResponse;
 
       if (
         !response.ok ||
@@ -157,15 +436,29 @@ export default function SearchClient({
 
       setCounts({
         articles:
-          data.counts?.articles ??
+          data.counts
+            ?.articles ??
           0,
 
         library:
-          data.counts?.library ??
+          data.counts
+            ?.library ??
+          0,
+
+        formulas:
+          data.counts
+            ?.formulas ??
           0,
       });
 
-      setSearched(true);
+      setTotal(
+        data.total ??
+          0
+      );
+
+      setSearched(
+        true
+      );
     } catch (err) {
       console.error(
         "Search error:",
@@ -178,134 +471,454 @@ export default function SearchClient({
           : "Unable to search PetroHub"
       );
 
-      setResults([]);
+      setResults(
+        []
+      );
 
       setCounts({
-        articles: 0,
-        library: 0,
+        articles:
+          0,
+
+        library:
+          0,
+
+        formulas:
+          0,
       });
 
-      setSearched(true);
+      setTotal(
+        0
+      );
+
+      setSearched(
+        true
+      );
     } finally {
-      setLoading(false);
+      setLoading(
+        false
+      );
     }
   }
 
+  /* =====================================================
+     URL
+  ===================================================== */
+
+  function buildUrl(
+    nextQuery: string,
+    nextType: string,
+    nextCategory: string,
+    nextContentType: string
+  ) {
+    const params =
+      new URLSearchParams();
+
+    const trimmed =
+      nextQuery.trim();
+
+    if (
+      trimmed
+    ) {
+      params.set(
+        "q",
+        trimmed
+      );
+    }
+
+    if (
+      nextType !==
+      "all"
+    ) {
+      params.set(
+        "type",
+        nextType
+      );
+    }
+
+    if (
+      nextCategory !==
+      "all"
+    ) {
+      params.set(
+        "category",
+        nextCategory
+      );
+    }
+
+    if (
+      nextContentType !==
+        "all" &&
+      (
+        nextType ===
+          "all" ||
+        nextType ===
+          "library"
+      )
+    ) {
+      params.set(
+        "contentType",
+        nextContentType
+      );
+    }
+
+    const queryString =
+      params.toString();
+
+    return queryString
+      ? `/search?${queryString}`
+      : "/search";
+  }
+
+  function navigate(
+    nextQuery: string,
+    nextType: string,
+    nextCategory: string,
+    nextContentType: string
+  ) {
+    router.push(
+      buildUrl(
+        nextQuery,
+        nextType,
+        nextCategory,
+        nextContentType
+      )
+    );
+  }
+
+  /* =====================================================
+     SUBMIT
+  ===================================================== */
+
   function handleSubmit(
-    event: FormEvent<HTMLFormElement>
+    event:
+      FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
 
-    const trimmedQuery =
-      query.trim();
+    const nextContentType =
+      resultType ===
+        "article" ||
+      resultType ===
+        "formula"
+        ? "all"
+        : contentType;
 
-    if (!trimmedQuery) {
-      clearSearch();
-      return;
-    }
+    navigate(
+      query,
+      resultType,
+      category,
+      nextContentType
+    );
+  }
+
+  /* =====================================================
+     FILTER CHANGE
+  ===================================================== */
+
+  function changeType(
+    nextType: string
+  ) {
+    setResultType(
+      nextType
+    );
+
+    const nextContentType =
+      nextType ===
+        "article" ||
+      nextType ===
+        "formula"
+        ? "all"
+        : contentType;
+
+    setContentType(
+      nextContentType
+    );
+
+    navigate(
+      query,
+      nextType,
+      category,
+      nextContentType
+    );
+  }
+
+  function changeCategory(
+    nextCategory: string
+  ) {
+    setCategory(
+      nextCategory
+    );
+
+    navigate(
+      query,
+      resultType,
+      nextCategory,
+      contentType
+    );
+  }
+
+  function changeContentType(
+    nextContentType: string
+  ) {
+    setContentType(
+      nextContentType
+    );
+
+    navigate(
+      query,
+      resultType,
+      category,
+      nextContentType
+    );
+  }
+
+  /* =====================================================
+     CLEAR
+  ===================================================== */
+
+  function clearSearch() {
+    setQuery(
+      ""
+    );
+
+    setResultType(
+      "all"
+    );
+
+    setCategory(
+      "all"
+    );
+
+    setContentType(
+      "all"
+    );
+
+    setResults(
+      []
+    );
+
+    setCounts({
+      articles:
+        0,
+
+      library:
+        0,
+
+      formulas:
+        0,
+    });
+
+    setTotal(
+      0
+    );
+
+    setSearched(
+      false
+    );
+
+    setError(
+      ""
+    );
 
     router.push(
-      `/search?q=${encodeURIComponent(
-        trimmedQuery
-      )}`
+      "/search"
+    );
+  }
+
+  /* =====================================================
+     INITIAL / URL CHANGE
+  ===================================================== */
+
+  useEffect(() => {
+    const nextType =
+      normalizeType(
+        initialType
+      );
+
+    const nextCategory =
+      normalizeCategory(
+        initialCategory
+      );
+
+    let nextContentType =
+      normalizeContentType(
+        initialContentType
+      );
+
+    if (
+      nextType ===
+        "article" ||
+      nextType ===
+        "formula"
+    ) {
+      nextContentType =
+        "all";
+    }
+
+    setQuery(
+      initialQuery
+    );
+
+    setResultType(
+      nextType
+    );
+
+    setCategory(
+      nextCategory
+    );
+
+    setContentType(
+      nextContentType
     );
 
     searchPetroHub(
-      trimmedQuery
+      initialQuery,
+      nextType,
+      nextCategory,
+      nextContentType
     );
-  }
+  }, [
+    initialQuery,
+    initialType,
+    initialCategory,
+    initialContentType,
+  ]);
 
-  function clearSearch() {
-    setQuery("");
-
-    setResults([]);
-
-    setCounts({
-      articles: 0,
-      library: 0,
-    });
-
-    setSearched(false);
-    setError("");
-
-    router.push("/search");
-  }
-
-  useEffect(() => {
-    setQuery(initialQuery);
-
-    if (initialQuery.trim()) {
-      searchPetroHub(
-        initialQuery
-      );
-    } else {
-      setResults([]);
-
-      setCounts({
-        articles: 0,
-        library: 0,
-      });
-
-      setSearched(false);
-      setError("");
-    }
-  }, [initialQuery]);
+  /* =====================================================
+     UI
+  ===================================================== */
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <Navbar />
 
-      {/* SEARCH HERO */}
+      {/* HERO */}
 
-      <section className="border-b border-slate-800 px-6 py-20">
-        <div className="mx-auto max-w-5xl">
+      <section className="relative overflow-hidden border-b border-slate-800 px-5 py-16 sm:px-6 md:py-20">
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-transparent" />
+
+        <div className="relative mx-auto max-w-6xl">
           <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
             PetroHub Search
           </p>
 
-          <h1 className="mt-3 text-4xl font-bold md:text-5xl">
+          <h1 className="mt-3 text-4xl font-black md:text-5xl">
             Search Engineering
             Knowledge
           </h1>
 
           <p className="mt-4 max-w-3xl leading-7 text-slate-400">
-            Search PetroHub
-            articles, books,
-            manuals, standards,
-            notes and engineering
-            resources.
+            Search engineering
+            articles, library
+            resources and verified
+            PetroHub formulas from
+            one place.
           </p>
 
           <form
             onSubmit={
               handleSubmit
             }
-            className="mt-8 flex flex-col gap-3 sm:flex-row"
+            className="mt-8"
           >
-            <input
-              type="search"
-              value={query}
-              onChange={(
-                event
-              ) =>
-                setQuery(
-                  event.target
-                    .value
-                )
-              }
-              placeholder="Search HIRA, LOTO, OSHA, drilling, safety..."
-              className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-900 px-5 py-4 text-white outline-none placeholder:text-slate-500 focus:border-orange-500"
-            />
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="search"
+                value={
+                  query
+                }
+                onChange={(
+                  event
+                ) =>
+                  setQuery(
+                    event.target
+                      .value
+                  )
+                }
+                autoComplete="off"
+                placeholder="Search HIRA, drilling, Darcy, reservoir, LOTO..."
+                className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-900 px-5 py-4 text-white outline-none placeholder:text-slate-500 focus:border-orange-500"
+              />
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-xl bg-orange-500 px-7 py-4 font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading
-                ? "Searching..."
-                : "Search"}
-            </button>
+              <button
+                type="submit"
+                disabled={
+                  loading
+                }
+                className="rounded-xl bg-orange-500 px-8 py-4 font-bold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading
+                  ? "Searching..."
+                  : "Search"}
+              </button>
+            </div>
+
+            {/* FILTERS */}
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <FilterSelect
+                label="Content"
+                value={
+                  resultType
+                }
+                onChange={
+                  changeType
+                }
+                options={
+                  resultTypes
+                }
+              />
+
+              <FilterSelect
+                label="Category"
+                value={
+                  category
+                }
+                onChange={
+                  changeCategory
+                }
+                options={[
+                  {
+                    value:
+                      "all",
+
+                    label:
+                      "All Categories",
+                  },
+
+                  ...ENGINEERING_CATEGORIES.map(
+                    (
+                      item
+                    ) => ({
+                      value:
+                        item.slug,
+
+                      label:
+                        item.name,
+                    })
+                  ),
+                ]}
+              />
+
+              <FilterSelect
+                label="Library Type"
+                value={
+                  contentType
+                }
+                onChange={
+                  changeContentType
+                }
+                disabled={
+                  resultType ===
+                    "article" ||
+                  resultType ===
+                    "formula"
+                }
+                options={
+                  libraryTypes
+                }
+              />
+            </div>
           </form>
 
           {/* QUICK SEARCH */}
@@ -314,11 +927,14 @@ export default function SearchClient({
             {[
               "HIRA",
               "LOTO",
-              "OSHA",
+              "Darcy",
+              "Drilling",
+              "Reservoir",
               "Fire Safety",
-              "Oil & Gas",
             ].map(
-              (keyword) => (
+              (
+                keyword
+              ) => (
                 <button
                   key={
                     keyword
@@ -329,19 +945,18 @@ export default function SearchClient({
                       keyword
                     );
 
-                    router.push(
-                      `/search?q=${encodeURIComponent(
-                        keyword
-                      )}`
-                    );
-
-                    searchPetroHub(
-                      keyword
+                    navigate(
+                      keyword,
+                      resultType,
+                      category,
+                      contentType
                     );
                   }}
                   className="rounded-full border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-400 transition hover:border-orange-500 hover:text-orange-400"
                 >
-                  {keyword}
+                  {
+                    keyword
+                  }
                 </button>
               )
             )}
@@ -351,22 +966,21 @@ export default function SearchClient({
 
       {/* RESULTS */}
 
-      <section className="px-6 py-16">
-        <div className="mx-auto max-w-5xl">
-
+      <section className="px-5 py-12 sm:px-6 md:py-16">
+        <div className="mx-auto max-w-6xl">
           {/* LOADING */}
 
           {loading && (
             <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
               <p className="font-semibold text-orange-400">
-                Searching
-                PetroHub...
+                Searching PetroHub...
               </p>
 
               <p className="mt-2 text-sm text-slate-500">
                 Looking through
-                articles and
-                library resources.
+                articles, library
+                resources and verified
+                formulas.
               </p>
             </div>
           )}
@@ -381,12 +995,34 @@ export default function SearchClient({
                 </p>
 
                 <p className="mt-2 text-sm text-red-400">
-                  {error}
+                  {
+                    error
+                  }
                 </p>
               </div>
             )}
 
-          {/* NO RESULTS */}
+          {/* INITIAL */}
+
+          {!loading &&
+            !error &&
+            !searched && (
+              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
+                <h2 className="text-xl font-bold">
+                  Search PetroHub
+                </h2>
+
+                <p className="mt-3 max-w-2xl leading-7 text-slate-400">
+                  Enter a keyword or
+                  choose a filter to
+                  search PetroHub
+                  engineering
+                  knowledge.
+                </p>
+              </div>
+            )}
+
+          {/* EMPTY */}
 
           {!loading &&
             !error &&
@@ -395,20 +1031,13 @@ export default function SearchClient({
               0 && (
               <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
                 <h2 className="text-xl font-bold">
-                  No results
-                  found
+                  No results found
                 </h2>
 
                 <p className="mt-3 text-slate-400">
-                  No PetroHub
-                  articles or
-                  library resources
-                  matched
-                  {" "}
-                  <span className="font-semibold text-white">
-                    “{query}”
-                  </span>
-                  .
+                  No PetroHub content
+                  matched your current
+                  search and filters.
                 </p>
 
                 <button
@@ -430,30 +1059,44 @@ export default function SearchClient({
             results.length >
               0 && (
               <>
-                {/* RESULT SUMMARY */}
-
-                <div className="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-5">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-5 sm:p-6">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <p className="font-semibold text-white">
-                        {
-                          results.length
-                        }{" "}
+                        {total.toLocaleString()}{" "}
                         result
-                        {results.length ===
-                        1
+                        {total === 1
                           ? ""
                           : "s"}{" "}
-                        found
+                        matched
                       </p>
 
-                      <p className="mt-1 text-sm text-slate-500">
-                        Results for
-                        {" "}
-                        <span className="text-slate-300">
-                          “{query}”
-                        </span>
-                      </p>
+                      {query.trim() && (
+                        <p className="mt-1 text-sm text-slate-500">
+                          Search results
+                          for{" "}
+                          <span className="font-semibold text-slate-300">
+                            "
+                            {
+                              query
+                            }
+                            "
+                          </span>
+                        </p>
+                      )}
+
+                      {total >
+                        results.length && (
+                        <p className="mt-1 text-xs text-slate-600">
+                          Showing the
+                          top{" "}
+                          {
+                            results.length
+                          }{" "}
+                          results by
+                          relevance.
+                        </p>
+                      )}
                     </div>
 
                     <button
@@ -461,7 +1104,7 @@ export default function SearchClient({
                       onClick={
                         clearSearch
                       }
-                      className="font-semibold text-orange-400 hover:text-orange-300"
+                      className="self-start font-semibold text-orange-400 hover:text-orange-300 lg:self-auto"
                     >
                       Clear Search
                     </button>
@@ -469,11 +1112,20 @@ export default function SearchClient({
 
                   {/* COUNTS */}
 
-                  <div className="mt-5 flex flex-wrap gap-3">
+                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
                     <ResultCount
                       label="Articles"
                       value={
                         counts.articles
+                      }
+                      active={
+                        resultType ===
+                        "article"
+                      }
+                      onClick={() =>
+                        changeType(
+                          "article"
+                        )
                       }
                     />
 
@@ -482,11 +1134,34 @@ export default function SearchClient({
                       value={
                         counts.library
                       }
+                      active={
+                        resultType ===
+                        "library"
+                      }
+                      onClick={() =>
+                        changeType(
+                          "library"
+                        )
+                      }
+                    />
+
+                    <ResultCount
+                      label="Formulas"
+                      value={
+                        counts.formulas
+                      }
+                      active={
+                        resultType ===
+                        "formula"
+                      }
+                      onClick={() =>
+                        changeType(
+                          "formula"
+                        )
+                      }
                     />
                   </div>
                 </div>
-
-                {/* CARDS */}
 
                 <div className="space-y-5">
                   {results.map(
@@ -494,9 +1169,7 @@ export default function SearchClient({
                       result
                     ) => (
                       <SearchResultCard
-                        key={
-                          `${result.resultType}-${result.id}`
-                        }
+                        key={`${result.resultType}-${result.id}`}
                         result={
                           result
                         }
@@ -506,31 +1179,6 @@ export default function SearchClient({
                 </div>
               </>
             )}
-
-          {/* INITIAL STATE */}
-
-          {!loading &&
-            !error &&
-            !searched &&
-            !query.trim() && (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-8">
-                <h2 className="text-xl font-bold">
-                  Search PetroHub
-                </h2>
-
-                <p className="mt-3 max-w-2xl leading-7 text-slate-400">
-                  Enter a keyword
-                  above to search
-                  engineering
-                  articles, books,
-                  manuals,
-                  standards,
-                  notes and
-                  downloadable
-                  resources.
-                </p>
-              </div>
-            )}
         </div>
       </section>
 
@@ -539,18 +1187,27 @@ export default function SearchClient({
   );
 }
 
-/* =========================
-   SEARCH RESULT CARD
-========================= */
+/* =========================================================
+   RESULT CARD
+========================================================= */
 
 function SearchResultCard({
   result,
 }: {
-  result: SearchResult;
+  result:
+    SearchResult;
 }) {
   const isArticle =
     result.resultType ===
     "article";
+
+  const isLibrary =
+    result.resultType ===
+    "library";
+
+  const isFormula =
+    result.resultType ===
+    "formula";
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 transition hover:-translate-y-0.5 hover:border-orange-500/50">
@@ -561,43 +1218,41 @@ function SearchResultCard({
             : ""
         }
       >
-        {/* LIBRARY COVER */}
-
         {result.coverImage && (
           <Link
-            href={result.href}
+            href={
+              result.href
+            }
             className="block bg-slate-800"
           >
             <img
               src={
                 result.coverImage
               }
-              alt={result.title}
+              alt={
+                result.title
+              }
+              loading="lazy"
               className="h-full min-h-[220px] w-full object-cover"
             />
           </Link>
         )}
 
-        {/* CONTENT */}
-
         <div className="p-6">
           <div className="flex flex-wrap items-center gap-2">
-
-            {/* RESULT TYPE */}
-
             <span
               className={
                 isArticle
                   ? "rounded-full bg-blue-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-400"
-                  : "rounded-full bg-orange-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-orange-400"
+                  : isFormula
+                    ? "rounded-full bg-purple-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-purple-400"
+                    : "rounded-full bg-orange-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-orange-400"
               }
             >
               {
                 result.typeLabel
               }
             </span>
-
-            {/* CATEGORY */}
 
             {result.category && (
               <span className="rounded-full border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-400">
@@ -607,15 +1262,19 @@ function SearchResultCard({
               </span>
             )}
 
-            {/* HOSTED / EXTERNAL */}
+            {result.featured && (
+              <span className="rounded-full bg-yellow-500/10 px-3 py-1 text-xs font-semibold text-yellow-400">
+                Featured
+              </span>
+            )}
 
-            {!isArticle &&
+            {isLibrary &&
               result.resourceType && (
                 <span className="rounded-full border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-500">
                   {result.resourceType ===
                   "hosted"
-                    ? "Hosted PDF"
-                    : "Official Source"}
+                    ? "Hosted"
+                    : "External"}
                 </span>
               )}
           </div>
@@ -626,25 +1285,31 @@ function SearchResultCard({
             }
           >
             <h2 className="mt-5 text-2xl font-bold leading-8 transition hover:text-orange-400">
-              {result.title}
+              {
+                result.title
+              }
             </h2>
           </Link>
 
-          {/* AUTHOR */}
-
-          {!isArticle &&
-            result.author && (
+          {isFormula &&
+            result.subDomain && (
               <p className="mt-2 text-sm text-slate-500">
-                By{" "}
-                <span className="font-medium text-slate-400">
-                  {
-                    result.author
-                  }
-                </span>
+                {
+                  result.subDomain
+                }
               </p>
             )}
 
-          {/* DESCRIPTION */}
+          {result.author && (
+            <p className="mt-2 text-sm text-slate-500">
+              By{" "}
+              <span className="font-medium text-slate-400">
+                {
+                  result.author
+                }
+              </span>
+            </p>
+          )}
 
           {result.description && (
             <p className="mt-4 line-clamp-3 leading-7 text-slate-400">
@@ -654,9 +1319,22 @@ function SearchResultCard({
             </p>
           )}
 
-          {/* PUBLISHER */}
+          {isFormula &&
+            result.formulaText && (
+              <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                  Formula
+                </p>
 
-          {!isArticle &&
+                <p className="mt-2 break-words font-mono text-sm text-slate-300">
+                  {
+                    result.formulaText
+                  }
+                </p>
+              </div>
+            )}
+
+          {isLibrary &&
             result.publisher && (
               <p className="mt-4 text-sm text-slate-500">
                 Publisher:{" "}
@@ -674,17 +1352,29 @@ function SearchResultCard({
               className="font-semibold text-orange-400 hover:text-orange-300"
             >
               {isArticle
-                ? "Read article →"
-                : "View resource →"}
+                ? "Read Article"
+                : isFormula
+                  ? "Open Formula"
+                  : "View Resource"}
             </Link>
 
-            {result.createdAt && (
-              <span className="text-xs text-slate-600">
-                {new Date(
-                  result.createdAt
-                ).toLocaleDateString()}
-              </span>
-            )}
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600">
+              {typeof result.views ===
+                "number" && (
+                <span>
+                  {result.views.toLocaleString()}{" "}
+                  views
+                </span>
+              )}
+
+              {result.createdAt && (
+                <span>
+                  {formatDate(
+                    result.createdAt
+                  )}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -692,26 +1382,200 @@ function SearchResultCard({
   );
 }
 
-/* =========================
-   RESULT COUNTER
-========================= */
+/* =========================================================
+   FILTER
+========================================================= */
+
+function FilterSelect({
+  label,
+  value,
+  options,
+  onChange,
+  disabled = false,
+}: {
+  label: string;
+
+  value: string;
+
+  options: {
+    value: string;
+    label: string;
+  }[];
+
+  onChange: (
+    value: string
+  ) => void;
+
+  disabled?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-500">
+        {label}
+      </span>
+
+      <select
+        value={
+          value
+        }
+        disabled={
+          disabled
+        }
+        onChange={(
+          event
+        ) =>
+          onChange(
+            event.target
+              .value
+          )
+        }
+        className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-200 outline-none transition focus:border-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {options.map(
+          (
+            option
+          ) => (
+            <option
+              key={
+                option.value
+              }
+              value={
+                option.value
+              }
+            >
+              {
+                option.label
+              }
+            </option>
+          )
+        )}
+      </select>
+    </label>
+  );
+}
+
+/* =========================================================
+   RESULT COUNT
+========================================================= */
 
 function ResultCount({
   label,
   value,
+  active,
+  onClick,
 }: {
   label: string;
   value: number;
+  active: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950 px-4 py-3">
+    <button
+      type="button"
+      onClick={
+        onClick
+      }
+      className={
+        active
+          ? "rounded-xl border border-orange-500 bg-orange-500/10 px-4 py-3 text-left"
+          : "rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-left transition hover:border-orange-500/50"
+      }
+    >
       <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
         {label}
       </p>
 
       <p className="mt-1 text-xl font-bold text-white">
-        {value}
+        {
+          value.toLocaleString()
+        }
       </p>
-    </div>
+    </button>
+  );
+}
+
+/* =========================================================
+   NORMALIZATION
+========================================================= */
+
+function normalizeType(
+  value: string
+) {
+  return [
+    "article",
+    "library",
+    "formula",
+  ].includes(
+    value
+  )
+    ? value
+    : "all";
+}
+
+function normalizeCategory(
+  value: string
+) {
+  const valid =
+    ENGINEERING_CATEGORIES.some(
+      (
+        category
+      ) =>
+        category.slug ===
+        value
+    );
+
+  return valid
+    ? value
+    : "all";
+}
+
+function normalizeContentType(
+  value: string
+) {
+  return [
+    "book",
+    "manual",
+    "standard",
+    "note",
+    "download",
+  ].includes(
+    value
+  )
+    ? value
+    : "all";
+}
+
+/* =========================================================
+   DATE
+========================================================= */
+
+function formatDate(
+  value: string
+) {
+  const date =
+    new Date(
+      value
+    );
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return "";
+  }
+
+  return date.toLocaleDateString(
+    "en-IN",
+    {
+      day:
+        "2-digit",
+
+      month:
+        "short",
+
+      year:
+        "numeric",
+    }
   );
 }
