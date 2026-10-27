@@ -12,33 +12,55 @@ type MessageStatus =
 
 type ContactMessage = {
   _id: string;
+
   name: string;
   email: string;
+
   subject: string;
   message: string;
-  status: MessageStatus;
-  createdAt: string;
+
+  status:
+    MessageStatus;
+
+  createdAt?: string;
+  updatedAt?: string;
 };
 
+type StatusFilter =
+  | "All"
+  | MessageStatus;
+
 type Props = {
-  initialMessages: ContactMessage[];
+  initialMessages:
+    ContactMessage[];
 };
 
 export default function ContactMessagesManager({
   initialMessages,
 }: Props) {
-  const [messages, setMessages] =
-    useState<ContactMessage[]>(
+  const [
+    messages,
+    setMessages,
+  ] =
+    useState<
+      ContactMessage[]
+    >(
       initialMessages
     );
 
   const [
+    search,
+    setSearch,
+  ] =
+    useState("");
+
+  const [
     statusFilter,
     setStatusFilter,
-  ] = useState("All");
-
-  const [search, setSearch] =
-    useState("");
+  ] =
+    useState<StatusFilter>(
+      "All"
+    );
 
   const [
     selectedMessage,
@@ -56,35 +78,60 @@ export default function ContactMessagesManager({
       null
     );
 
-  const [error, setError] =
+  const [
+    error,
+    setError,
+  ] =
     useState("");
 
-  const counts = useMemo(() => {
-    return {
-      total: messages.length,
+  const [
+    success,
+    setSuccess,
+  ] =
+    useState("");
 
-      unread:
-        messages.filter(
-          (message) =>
-            message.status ===
-            "Unread"
-        ).length,
+  /* =======================================================
+     COUNTS
+  ======================================================= */
 
-      read:
-        messages.filter(
-          (message) =>
-            message.status ===
-            "Read"
-        ).length,
+  const counts =
+    useMemo(() => {
+      return {
+        total:
+          messages.length,
 
-      resolved:
-        messages.filter(
-          (message) =>
-            message.status ===
-            "Resolved"
-        ).length,
-    };
-  }, [messages]);
+        unread:
+          messages.filter(
+            (
+              item
+            ) =>
+              item.status ===
+              "Unread"
+          ).length,
+
+        read:
+          messages.filter(
+            (
+              item
+            ) =>
+              item.status ===
+              "Read"
+          ).length,
+
+        resolved:
+          messages.filter(
+            (
+              item
+            ) =>
+              item.status ===
+              "Resolved"
+          ).length,
+      };
+    }, [messages]);
+
+  /* =======================================================
+     FILTER
+  ======================================================= */
 
   const filteredMessages =
     useMemo(() => {
@@ -94,31 +141,34 @@ export default function ContactMessagesManager({
           .toLowerCase();
 
       return messages.filter(
-        (message) => {
-          const matchesStatus =
-            statusFilter ===
-              "All" ||
-            message.status ===
-              statusFilter;
+        (
+          item
+        ) => {
+          const searchText =
+            [
+              item.name,
+              item.email,
+              item.subject,
+              item.message,
+            ]
+              .join(" ")
+              .toLowerCase();
 
           const matchesSearch =
             !query ||
-            message.name
-              .toLowerCase()
-              .includes(query) ||
-            message.email
-              .toLowerCase()
-              .includes(query) ||
-            message.subject
-              .toLowerCase()
-              .includes(query) ||
-            message.message
-              .toLowerCase()
-              .includes(query);
+            searchText.includes(
+              query
+            );
+
+          const matchesStatus =
+            statusFilter ===
+              "All" ||
+            item.status ===
+              statusFilter;
 
           return (
-            matchesStatus &&
-            matchesSearch
+            matchesSearch &&
+            matchesStatus
           );
         }
       );
@@ -128,45 +178,96 @@ export default function ContactMessagesManager({
       statusFilter,
     ]);
 
-  async function updateStatus(
+  /* =======================================================
+     UPDATE LOCAL MESSAGE
+  ======================================================= */
+
+  function updateLocalMessage(
     id: string,
-    status: MessageStatus
+    status:
+      MessageStatus
   ) {
-    setProcessingId(id);
+    setMessages(
+      (
+        current
+      ) =>
+        current.map(
+          (
+            item
+          ) =>
+            item._id === id
+              ? {
+                  ...item,
+                  status,
+                }
+              : item
+        )
+    );
+
+    setSelectedMessage(
+      (
+        current
+      ) =>
+        current?._id ===
+        id
+          ? {
+              ...current,
+              status,
+            }
+          : current
+    );
+  }
+
+  /* =======================================================
+     UPDATE STATUS
+  ======================================================= */
+
+  async function updateStatus(
+    message:
+      ContactMessage,
+    status:
+      MessageStatus,
+    showSuccess = true
+  ) {
+    if (
+      message.status ===
+      status
+    ) {
+      return;
+    }
+
+    setProcessingId(
+      message._id
+    );
+
     setError("");
+
+    if (showSuccess) {
+      setSuccess("");
+    }
 
     try {
       const response =
         await fetch(
-          `/api/admin/contact/${id}`,
+          `/api/admin/contact/${message._id}`,
           {
-            method: "PATCH",
+            method:
+              "PATCH",
 
             headers: {
               "Content-Type":
                 "application/json",
             },
 
-            body: JSON.stringify({
-              status,
-            }),
+            body:
+              JSON.stringify({
+                status,
+              }),
           }
         );
 
-      const text =
-        await response.text();
-
-      let data: any = {};
-
-      try {
-        data = text
-          ? JSON.parse(text)
-          : {};
-      } catch {
-        throw new Error(
-          `Invalid server response (${response.status})`
-        );
-      }
+      const data =
+        await response.json();
 
       if (
         !response.ok ||
@@ -178,75 +279,92 @@ export default function ContactMessagesManager({
         );
       }
 
-      setMessages((current) =>
-        current.map((message) =>
-          message._id === id
-            ? {
-                ...message,
-                status,
-              }
-            : message
-        )
+      updateLocalMessage(
+        message._id,
+        status
       );
 
-      setSelectedMessage(
-        (current) =>
-          current?._id === id
-            ? {
-                ...current,
-                status,
-              }
-            : current
-      );
-    } catch (error) {
+      if (showSuccess) {
+        setSuccess(
+          `Message marked as ${status}.`
+        );
+      }
+    } catch (err) {
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Unable to update message"
       );
     } finally {
-      setProcessingId(null);
+      setProcessingId(
+        null
+      );
     }
   }
 
+  /* =======================================================
+     OPEN MESSAGE
+  ======================================================= */
+
+  async function openMessage(
+    message:
+      ContactMessage
+  ) {
+    setSelectedMessage(
+      message
+    );
+
+    setError("");
+    setSuccess("");
+
+    if (
+      message.status ===
+      "Unread"
+    ) {
+      await updateStatus(
+        message,
+        "Read",
+        false
+      );
+    }
+  }
+
+  /* =======================================================
+     DELETE MESSAGE
+  ======================================================= */
+
   async function deleteMessage(
-    id: string
+    message:
+      ContactMessage
   ) {
     const confirmed =
       window.confirm(
-        "Delete this contact message permanently?"
+        `Delete the message from ${message.name}?\n\nThis action cannot be undone.`
       );
 
     if (!confirmed) {
       return;
     }
 
-    setProcessingId(id);
+    setProcessingId(
+      message._id
+    );
+
     setError("");
+    setSuccess("");
 
     try {
       const response =
         await fetch(
-          `/api/admin/contact/${id}`,
+          `/api/admin/contact/${message._id}`,
           {
-            method: "DELETE",
+            method:
+              "DELETE",
           }
         );
 
-      const text =
-        await response.text();
-
-      let data: any = {};
-
-      try {
-        data = text
-          ? JSON.parse(text)
-          : {};
-      } catch {
-        throw new Error(
-          `Invalid server response (${response.status})`
-        );
-      }
+      const data =
+        await response.json();
 
       if (
         !response.ok ||
@@ -258,70 +376,100 @@ export default function ContactMessagesManager({
         );
       }
 
-      setMessages((current) =>
-        current.filter(
-          (message) =>
-            message._id !== id
-        )
+      setMessages(
+        (
+          current
+        ) =>
+          current.filter(
+            (
+              item
+            ) =>
+              item._id !==
+              message._id
+          )
       );
 
       if (
         selectedMessage?._id ===
-        id
+        message._id
       ) {
-        setSelectedMessage(null);
+        setSelectedMessage(
+          null
+        );
       }
-    } catch (error) {
+
+      setSuccess(
+        "Contact message deleted successfully."
+      );
+    } catch (err) {
       setError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "Unable to delete message"
       );
     } finally {
-      setProcessingId(null);
+      setProcessingId(
+        null
+      );
     }
   }
 
-  async function openMessage(
-    message: ContactMessage
-  ) {
-    setSelectedMessage(message);
+  /* =======================================================
+     REPLY LINK
+  ======================================================= */
 
-    if (
-      message.status ===
-      "Unread"
-    ) {
-      await updateStatus(
-        message._id,
-        "Read"
-      );
-    }
+  function getReplyLink(
+    message:
+      ContactMessage
+  ) {
+    const subject =
+      message.subject
+        .toLowerCase()
+        .startsWith("re:")
+        ? message.subject
+        : `Re: ${message.subject}`;
+
+    return (
+      `mailto:${message.email}` +
+      `?subject=${encodeURIComponent(
+        subject
+      )}`
+    );
   }
 
   return (
     <div>
-      {/* COUNTERS */}
+      {/* ===================================================
+          STATISTICS
+      =================================================== */}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Counter
-          label="Total"
-          value={counts.total}
-        />
-
-        <Counter
-          label="Unread"
-          value={counts.unread}
-          highlight={
-            counts.unread > 0
+        <StatCard
+          label="Total Messages"
+          value={
+            counts.total
           }
         />
 
-        <Counter
-          label="Read"
-          value={counts.read}
+        <StatCard
+          label="Unread"
+          value={
+            counts.unread
+          }
+          highlight={
+            counts.unread >
+            0
+          }
         />
 
-        <Counter
+        <StatCard
+          label="Read"
+          value={
+            counts.read
+          }
+        />
+
+        <StatCard
           label="Resolved"
           value={
             counts.resolved
@@ -329,13 +477,19 @@ export default function ContactMessagesManager({
         />
       </div>
 
-      {/* FILTERS */}
+      {/* ===================================================
+          FILTERS
+      =================================================== */}
 
-      <div className="mt-8 grid gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 md:grid-cols-[1fr_220px]">
+      <div className="mt-8 grid gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 md:grid-cols-[1fr_240px]">
         <input
           type="search"
-          value={search}
-          onChange={(event) =>
+          value={
+            search
+          }
+          onChange={(
+            event
+          ) =>
             setSearch(
               event.target.value
             )
@@ -345,10 +499,15 @@ export default function ContactMessagesManager({
         />
 
         <select
-          value={statusFilter}
-          onChange={(event) =>
+          value={
+            statusFilter
+          }
+          onChange={(
+            event
+          ) =>
             setStatusFilter(
-              event.target.value
+              event.target
+                .value as StatusFilter
             )
           }
           className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
@@ -371,268 +530,371 @@ export default function ContactMessagesManager({
         </select>
       </div>
 
+      <p className="mt-4 text-sm text-slate-500">
+        Showing{" "}
+        <span className="font-semibold text-slate-300">
+          {
+            filteredMessages.length
+          }
+        </span>{" "}
+        of{" "}
+        <span className="font-semibold text-slate-300">
+          {
+            messages.length
+          }
+        </span>{" "}
+        messages.
+      </p>
+
+      {/* ===================================================
+          ALERTS
+      =================================================== */}
+
       {error && (
-        <div className="mt-5 rounded-xl border border-red-900 bg-red-950/40 p-4 text-red-300">
-          {error}
-        </div>
+        <Alert
+          type="error"
+          message={
+            error
+          }
+          onClose={() =>
+            setError("")
+          }
+        />
       )}
 
-      {/* MESSAGE LIST */}
+      {success && (
+        <Alert
+          type="success"
+          message={
+            success
+          }
+          onClose={() =>
+            setSuccess("")
+          }
+        />
+      )}
 
-      {filteredMessages.length ===
-      0 ? (
-        <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-10 text-center">
-          <h2 className="text-xl font-bold">
-            No messages found
-          </h2>
+      {/* ===================================================
+          INBOX LAYOUT
+      =================================================== */}
 
-          <p className="mt-3 text-slate-400">
-            No contact messages
-            match the current
-            filter.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-6 space-y-4">
-          {filteredMessages.map(
-            (message) => (
-              <div
-                key={message._id}
-                className={
-                  message.status ===
-                  "Unread"
-                    ? "rounded-2xl border border-orange-500/40 bg-orange-500/5 p-6"
-                    : "rounded-2xl border border-slate-800 bg-slate-900 p-6"
-                }
-              >
-                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      openMessage(
-                        message
-                      )
-                    }
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <div className="flex flex-wrap items-center gap-3">
-                      <StatusBadge
-                        status={
-                          message.status
-                        }
-                      />
+      <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(360px,0.6fr)]">
+        {/* MESSAGE LIST */}
 
-                      <span className="text-xs text-slate-500">
-                        {formatDate(
-                          message.createdAt
-                        )}
-                      </span>
-                    </div>
+        <div>
+          {filteredMessages.length ===
+          0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/60 p-10 text-center">
+              <h2 className="text-xl font-bold">
+                No messages
+                found
+              </h2>
 
-                    <h2 className="mt-4 text-xl font-bold">
-                      {
-                        message.subject
-                      }
-                    </h2>
+              <p className="mt-3 text-sm text-slate-500">
+                No contact
+                messages match
+                the selected
+                search and
+                filters.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+              {filteredMessages.map(
+                (
+                  message
+                ) => {
+                  const selected =
+                    selectedMessage?._id ===
+                    message._id;
 
-                    <p className="mt-2 font-medium text-slate-300">
-                      {message.name}
-                    </p>
+                  const processing =
+                    processingId ===
+                    message._id;
 
-                    <p className="mt-1 text-sm text-slate-500">
-                      {message.email}
-                    </p>
-
-                    <p className="mt-4 line-clamp-2 leading-7 text-slate-400">
-                      {
-                        message.message
-                      }
-                    </p>
-                  </button>
-
-                  <div className="flex shrink-0 flex-wrap gap-2">
+                  return (
                     <button
+                      key={
+                        message._id
+                      }
                       type="button"
+                      disabled={
+                        processing
+                      }
                       onClick={() =>
                         openMessage(
                           message
                         )
                       }
-                      className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-orange-500 hover:text-orange-400"
+                      className={`block w-full border-b border-slate-800 p-5 text-left transition last:border-b-0 ${
+                        selected
+                          ? "bg-orange-500/10"
+                          : message.status ===
+                              "Unread"
+                            ? "bg-orange-500/[0.04] hover:bg-slate-800/70"
+                            : "hover:bg-slate-800/50"
+                      }`}
                     >
-                      View
-                    </button>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p
+                              className={
+                                message.status ===
+                                "Unread"
+                                  ? "font-bold text-white"
+                                  : "font-semibold text-slate-200"
+                              }
+                            >
+                              {
+                                message.name
+                              }
+                            </p>
 
-                    {message.status !==
-                      "Resolved" && (
-                      <button
-                        type="button"
-                        disabled={
-                          processingId ===
-                          message._id
-                        }
-                        onClick={() =>
-                          updateStatus(
-                            message._id,
-                            "Resolved"
-                          )
-                        }
-                        className="rounded-lg border border-green-800 px-4 py-2 text-sm font-semibold text-green-400 transition hover:bg-green-500/10 disabled:opacity-50"
-                      >
-                        Resolve
-                      </button>
-                    )}
+                            <StatusBadge
+                              status={
+                                message.status
+                              }
+                            />
+                          </div>
 
-                    <button
-                      type="button"
-                      disabled={
-                        processingId ===
-                        message._id
-                      }
-                      onClick={() =>
-                        deleteMessage(
-                          message._id
-                        )
-                      }
-                      className="rounded-lg border border-red-900 px-4 py-2 text-sm font-semibold text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
-                    >
-                      Delete
+                          <p className="mt-1 truncate text-sm text-slate-500">
+                            {
+                              message.email
+                            }
+                          </p>
+
+                          <p className="mt-4 truncate font-semibold text-slate-300">
+                            {
+                              message.subject
+                            }
+                          </p>
+
+                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
+                            {
+                              message.message
+                            }
+                          </p>
+                        </div>
+
+                        <div className="shrink-0 text-right text-xs text-slate-600">
+                          {formatDate(
+                            message.createdAt
+                          )}
+                        </div>
+                      </div>
                     </button>
-                  </div>
-                </div>
-              </div>
-            )
+                  );
+                }
+              )}
+            </div>
           )}
         </div>
-      )}
 
-      {/* MODAL */}
+        {/* MESSAGE DETAILS */}
 
-      {selectedMessage && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-slate-700 bg-slate-950 shadow-2xl">
-            <div className="flex items-start justify-between gap-5 border-b border-slate-800 p-6">
-              <div>
+        <div>
+          {selectedMessage ? (
+            <div className="sticky top-28 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-500">
+                    Message Details
+                  </p>
+
+                  <h2 className="mt-3 text-2xl font-black">
+                    {
+                      selectedMessage.subject
+                    }
+                  </h2>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedMessage(
+                      null
+                    )
+                  }
+                  className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-bold text-slate-400 transition hover:text-white"
+                >
+                  X
+                </button>
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center gap-2">
                 <StatusBadge
                   status={
                     selectedMessage.status
                   }
                 />
 
-                <h2 className="mt-4 text-2xl font-bold">
-                  {
-                    selectedMessage.subject
-                  }
-                </h2>
-              </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setSelectedMessage(
-                    null
-                  )
-                }
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 text-xl text-slate-400 hover:border-orange-500 hover:text-orange-400"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="p-6">
-              <div className="grid gap-5 sm:grid-cols-2">
-                <Info
-                  label="Name"
-                  value={
-                    selectedMessage.name
-                  }
-                />
-
-                <Info
-                  label="Email"
-                  value={
-                    selectedMessage.email
-                  }
-                />
-
-                <Info
-                  label="Received"
-                  value={formatDate(
+                <span className="text-xs text-slate-500">
+                  {formatDateTime(
                     selectedMessage.createdAt
                   )}
-                />
-
-                <Info
-                  label="Status"
-                  value={
-                    selectedMessage.status
-                  }
-                />
+                </span>
               </div>
 
-              <div className="mt-7">
-                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              {/* SENDER */}
+
+              <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                  From
+                </p>
+
+                <p className="mt-2 font-bold">
+                  {
+                    selectedMessage.name
+                  }
+                </p>
+
+                <a
+                  href={`mailto:${selectedMessage.email}`}
+                  className="mt-1 block break-all text-sm text-orange-400 hover:text-orange-300"
+                >
+                  {
+                    selectedMessage.email
+                  }
+                </a>
+              </div>
+
+              {/* MESSAGE */}
+
+              <div className="mt-6">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
                   Message
                 </p>
 
-                <div className="mt-3 whitespace-pre-wrap rounded-2xl border border-slate-800 bg-slate-900 p-5 leading-7 text-slate-300">
+                <div className="mt-3 whitespace-pre-wrap rounded-xl border border-slate-800 bg-slate-950/50 p-5 text-sm leading-7 text-slate-300">
                   {
                     selectedMessage.message
                   }
                 </div>
               </div>
 
-              <div className="mt-7 flex flex-wrap gap-3">
+              {/* STATUS ACTIONS */}
+
+              <div className="mt-6">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                  Update Status
+                </p>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <StatusButton
+                    label="Unread"
+                    active={
+                      selectedMessage.status ===
+                      "Unread"
+                    }
+                    disabled={
+                      processingId ===
+                      selectedMessage._id
+                    }
+                    onClick={() =>
+                      updateStatus(
+                        selectedMessage,
+                        "Unread"
+                      )
+                    }
+                  />
+
+                  <StatusButton
+                    label="Read"
+                    active={
+                      selectedMessage.status ===
+                      "Read"
+                    }
+                    disabled={
+                      processingId ===
+                      selectedMessage._id
+                    }
+                    onClick={() =>
+                      updateStatus(
+                        selectedMessage,
+                        "Read"
+                      )
+                    }
+                  />
+
+                  <StatusButton
+                    label="Resolved"
+                    active={
+                      selectedMessage.status ===
+                      "Resolved"
+                    }
+                    disabled={
+                      processingId ===
+                      selectedMessage._id
+                    }
+                    onClick={() =>
+                      updateStatus(
+                        selectedMessage,
+                        "Resolved"
+                      )
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* ACTIONS */}
+
+              <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-800 pt-6">
                 <a
-                  href={`mailto:${selectedMessage.email}?subject=${encodeURIComponent(
-                    `Re: ${selectedMessage.subject}`
-                  )}`}
-                  className="rounded-xl bg-orange-500 px-5 py-3 font-bold text-white transition hover:bg-orange-600"
+                  href={getReplyLink(
+                    selectedMessage
+                  )}
+                  className="rounded-xl bg-orange-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-600"
                 >
                   Reply by Email
                 </a>
 
-                {selectedMessage.status !==
-                  "Resolved" && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateStatus(
-                        selectedMessage._id,
-                        "Resolved"
-                      )
-                    }
-                    className="rounded-xl border border-green-800 px-5 py-3 font-bold text-green-400 hover:bg-green-500/10"
-                  >
-                    Mark Resolved
-                  </button>
-                )}
-
-                {selectedMessage.status ===
-                  "Resolved" && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      updateStatus(
-                        selectedMessage._id,
-                        "Read"
-                      )
-                    }
-                    className="rounded-xl border border-slate-700 px-5 py-3 font-semibold text-slate-300 hover:border-orange-500"
-                  >
-                    Reopen
-                  </button>
-                )}
+                <button
+                  type="button"
+                  disabled={
+                    processingId ===
+                    selectedMessage._id
+                  }
+                  onClick={() =>
+                    deleteMessage(
+                      selectedMessage
+                    )
+                  }
+                  className="rounded-xl border border-red-900/80 px-5 py-3 text-sm font-bold text-red-400 transition hover:bg-red-500/10 disabled:opacity-50"
+                >
+                  {processingId ===
+                  selectedMessage._id
+                    ? "Processing..."
+                    : "Delete"}
+                </button>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 p-8 text-center">
+              <p className="font-bold text-slate-300">
+                Select a message
+              </p>
+
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Choose a message
+                from the inbox to
+                read the full
+                enquiry and manage
+                its status.
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-function Counter({
+/* =========================================================
+   STAT
+========================================================= */
+
+function StatCard({
   label,
   value,
   highlight = false,
@@ -645,7 +907,7 @@ function Counter({
     <div
       className={
         highlight
-          ? "rounded-2xl border border-orange-500/50 bg-orange-500/10 p-5"
+          ? "rounded-2xl border border-orange-500/40 bg-orange-500/10 p-5"
           : "rounded-2xl border border-slate-800 bg-slate-900 p-5"
       }
     >
@@ -656,63 +918,137 @@ function Counter({
       <p
         className={
           highlight
-            ? "mt-2 text-3xl font-bold text-orange-400"
-            : "mt-2 text-3xl font-bold"
+            ? "mt-3 text-3xl font-black text-orange-400"
+            : "mt-3 text-3xl font-black text-white"
         }
       >
-        {value}
+        {value.toLocaleString()}
       </p>
     </div>
   );
 }
 
+/* =========================================================
+   STATUS
+========================================================= */
+
 function StatusBadge({
   status,
 }: {
-  status: MessageStatus;
+  status:
+    MessageStatus;
 }) {
-  const style =
-    status === "Unread"
+  const className =
+    status ===
+    "Unread"
       ? "bg-orange-500/10 text-orange-400"
       : status ===
           "Resolved"
-        ? "bg-green-500/10 text-green-400"
+        ? "bg-emerald-500/10 text-emerald-400"
         : "bg-blue-500/10 text-blue-400";
 
   return (
     <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${style}`}
+      className={`rounded-full px-3 py-1 text-xs font-bold ${className}`}
     >
       {status}
     </span>
   );
 }
 
-function Info({
+/* =========================================================
+   STATUS BUTTON
+========================================================= */
+
+function StatusButton({
   label,
-  value,
+  active,
+  disabled,
+  onClick,
 }: {
-  label: string;
-  value: string;
+  label:
+    MessageStatus;
+  active: boolean;
+  disabled: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-        {label}
+    <button
+      type="button"
+      disabled={
+        disabled ||
+        active
+      }
+      onClick={
+        onClick
+      }
+      className={
+        active
+          ? "rounded-lg border border-orange-500 bg-orange-500/10 px-4 py-2 text-sm font-bold text-orange-400 disabled:opacity-100"
+          : "rounded-lg border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-400 transition hover:border-orange-500 hover:text-white disabled:opacity-40"
+      }
+    >
+      {label}
+    </button>
+  );
+}
+
+/* =========================================================
+   ALERT
+========================================================= */
+
+function Alert({
+  type,
+  message,
+  onClose,
+}: {
+  type:
+    | "error"
+    | "success";
+  message: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className={
+        type ===
+        "error"
+          ? "mt-5 flex items-start justify-between gap-4 rounded-xl border border-red-900 bg-red-500/10 p-4 text-red-300"
+          : "mt-5 flex items-start justify-between gap-4 rounded-xl border border-emerald-800 bg-emerald-500/10 p-4 text-emerald-300"
+      }
+    >
+      <p>
+        {message}
       </p>
 
-      <p className="mt-2 break-words font-medium text-slate-300">
-        {value}
-      </p>
+      <button
+        type="button"
+        onClick={
+          onClose
+        }
+        className="font-bold"
+      >
+        X
+      </button>
     </div>
   );
 }
 
+/* =========================================================
+   DATE
+========================================================= */
+
 function formatDate(
-  value: string
+  value?: string
 ) {
+  if (!value) {
+    return "-";
+  }
+
   const date =
-    new Date(value);
+    new Date(
+      value
+    );
 
   if (
     Number.isNaN(
@@ -722,11 +1058,58 @@ function formatDate(
     return "-";
   }
 
-  return new Intl.DateTimeFormat(
+  return date.toLocaleDateString(
     "en-IN",
     {
-      dateStyle: "medium",
-      timeStyle: "short",
+      day:
+        "2-digit",
+
+      month:
+        "short",
+
+      year:
+        "numeric",
     }
-  ).format(date);
+  );
+}
+
+function formatDateTime(
+  value?: string
+) {
+  if (!value) {
+    return "-";
+  }
+
+  const date =
+    new Date(
+      value
+    );
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return "-";
+  }
+
+  return date.toLocaleString(
+    "en-IN",
+    {
+      day:
+        "2-digit",
+
+      month:
+        "short",
+
+      year:
+        "numeric",
+
+      hour:
+        "2-digit",
+
+      minute:
+        "2-digit",
+    }
+  );
 }

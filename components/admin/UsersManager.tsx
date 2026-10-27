@@ -692,7 +692,7 @@ export default function UsersManager({
             }
             className="text-sm font-bold"
           >
-            ×
+            X
           </button>
         </div>
       )}
@@ -712,7 +712,7 @@ export default function UsersManager({
             }
             className="text-sm font-bold"
           >
-            ×
+            X
           </button>
         </div>
       )}
