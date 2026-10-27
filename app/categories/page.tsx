@@ -1,26 +1,53 @@
-import type { Metadata } from "next";
+import type {
+  Metadata,
+} from "next";
+
 import Link from "next/link";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-/* =========================================================
-   SITE URL
-========================================================= */
+import {
+  connectDB,
+} from "@/lib/mongodb";
+
+import {
+  ENGINEERING_CATEGORIES,
+} from "@/lib/categories";
+
+import Article from "@/models/Article";
+
+import {
+  BookModel,
+} from "@/models/Book";
+
+export const dynamic =
+  "force-dynamic";
 
 const PRODUCTION_URL =
   "https://petrohub-dlor.vercel.app";
 
+/* =========================================================
+   SITE URL
+========================================================= */
+
 function getSiteUrl() {
   const configuredUrl =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim();
+    process.env
+      .NEXT_PUBLIC_SITE_URL
+      ?.trim();
 
   if (
-    process.env.NODE_ENV === "production" &&
+    process.env.NODE_ENV ===
+      "production" &&
     (
       !configuredUrl ||
-      configuredUrl.includes("localhost") ||
-      configuredUrl.includes("127.0.0.1")
+      configuredUrl.includes(
+        "localhost"
+      ) ||
+      configuredUrl.includes(
+        "127.0.0.1"
+      )
     )
   ) {
     return PRODUCTION_URL;
@@ -29,174 +56,200 @@ function getSiteUrl() {
   return (
     configuredUrl ||
     "http://localhost:3000"
-  ).replace(/\/+$/, "");
+  ).replace(
+    /\/+$/,
+    ""
+  );
 }
 
 /* =========================================================
-   CATEGORIES
+   TYPES
 ========================================================= */
 
-const categories = [
-  {
-    name: "HSE",
-    slug: "hse",
+type CategoryCountResult = {
+  _id: string;
+  count: number;
+};
 
-    description:
-      "Workplace safety, HIRA, Permit to Work, LOTO, incident investigation, risk assessment and occupational health.",
+type CategoryStats = {
+  name: string;
+  slug: string;
+  description: string;
 
-    keywords: [
-      "HSE",
-      "Safety Engineering",
-      "HIRA",
-      "Permit to Work",
-      "LOTO",
-      "Risk Assessment",
-    ],
-  },
-
-  {
-    name: "Oil & Gas",
-    slug: "oil-gas",
-
-    description:
-      "Petroleum engineering, drilling, production, reservoir engineering and upstream oil and gas operations.",
-
-    keywords: [
-      "Oil and Gas",
-      "Petroleum Engineering",
-      "Drilling Engineering",
-      "Production Engineering",
-      "Reservoir Engineering",
-    ],
-  },
-
-  {
-    name: "Mechanical",
-    slug: "mechanical",
-
-    description:
-      "Mechanical equipment, piping, maintenance, rotating equipment, corrosion and engineering practices.",
-
-    keywords: [
-      "Mechanical Engineering",
-      "Piping",
-      "Rotating Equipment",
-      "Maintenance",
-      "Corrosion",
-    ],
-  },
-
-  {
-    name: "Electrical",
-    slug: "electrical",
-
-    description:
-      "Electrical safety, power systems, isolation, protection systems and industrial electrical equipment.",
-
-    keywords: [
-      "Electrical Engineering",
-      "Electrical Safety",
-      "Power Systems",
-      "Electrical Isolation",
-      "Protection Systems",
-    ],
-  },
-
-  {
-    name: "Instrumentation",
-    slug: "instrumentation",
-
-    description:
-      "Instrumentation, sensors, transmitters, calibration, measurement and industrial control systems.",
-
-    keywords: [
-      "Instrumentation Engineering",
-      "Sensors",
-      "Transmitters",
-      "Calibration",
-      "Process Control",
-    ],
-  },
-
-  {
-    name: "Process",
-    slug: "process",
-
-    description:
-      "Process engineering, process safety, HAZOP, industrial operations and plant systems.",
-
-    keywords: [
-      "Process Engineering",
-      "Process Safety",
-      "HAZOP",
-      "Plant Operations",
-      "Industrial Process",
-    ],
-  },
-
-  {
-    name: "Civil",
-    slug: "civil",
-
-    description:
-      "Construction practices, structural systems, civil engineering fundamentals and site activities.",
-
-    keywords: [
-      "Civil Engineering",
-      "Construction Engineering",
-      "Structural Engineering",
-      "Site Engineering",
-    ],
-  },
-
-  {
-    name: "Geology",
-    slug: "geology",
-
-    description:
-      "Petroleum geology, formations, reservoirs, subsurface interpretation and geological knowledge.",
-
-    keywords: [
-      "Geology",
-      "Petroleum Geology",
-      "Reservoir Geology",
-      "Subsurface",
-      "Geological Formations",
-    ],
-  },
-];
+  articleCount: number;
+  resourceCount: number;
+  totalCount: number;
+};
 
 /* =========================================================
-   SEO METADATA
+   DATA
 ========================================================= */
 
-export const metadata: Metadata = {
-  /*
-   * Root layout already adds:
-   * "%s | PetroHub"
-   */
+async function getCategoryStats(): Promise<
+  CategoryStats[]
+> {
+  try {
+    await connectDB();
 
+    const [
+      articleResults,
+      resourceResults,
+    ] =
+      await Promise.all([
+        Article.aggregate([
+          {
+            $match: {
+              status:
+                "Published",
+            },
+          },
+
+          {
+            $group: {
+              _id:
+                "$category",
+
+              count: {
+                $sum:
+                  1,
+              },
+            },
+          },
+        ]),
+
+        BookModel.aggregate([
+          {
+            $match: {
+              status:
+                "Published",
+            },
+          },
+
+          {
+            $group: {
+              _id:
+                "$category",
+
+              count: {
+                $sum:
+                  1,
+              },
+            },
+          },
+        ]),
+      ]);
+
+    const articleCounts =
+      new Map<
+        string,
+        number
+      >(
+        (
+          articleResults as CategoryCountResult[]
+        ).map(
+          (
+            item
+          ) => [
+            item._id,
+            item.count,
+          ]
+        )
+      );
+
+    const resourceCounts =
+      new Map<
+        string,
+        number
+      >(
+        (
+          resourceResults as CategoryCountResult[]
+        ).map(
+          (
+            item
+          ) => [
+            item._id,
+            item.count,
+          ]
+        )
+      );
+
+    return ENGINEERING_CATEGORIES.map(
+      (
+        category
+      ) => {
+        const articleCount =
+          articleCounts.get(
+            category.name
+          ) || 0;
+
+        const resourceCount =
+          resourceCounts.get(
+            category.name
+          ) || 0;
+
+        return {
+          name:
+            category.name,
+
+          slug:
+            category.slug,
+
+          description:
+            category.description,
+
+          articleCount,
+
+          resourceCount,
+
+          totalCount:
+            articleCount +
+            resourceCount,
+        };
+      }
+    );
+  } catch (error) {
+    console.error(
+      "Category stats fetch error:",
+      error
+    );
+
+    return ENGINEERING_CATEGORIES.map(
+      (
+        category
+      ) => ({
+        name:
+          category.name,
+
+        slug:
+          category.slug,
+
+        description:
+          category.description,
+
+        articleCount:
+          0,
+
+        resourceCount:
+          0,
+
+        totalCount:
+          0,
+      })
+    );
+  }
+}
+
+/* =========================================================
+   SEO
+========================================================= */
+
+export const metadata:
+  Metadata = {
   title:
     "Engineering Categories",
 
   description:
     "Explore PetroHub engineering knowledge across HSE, Oil & Gas, Mechanical, Electrical, Instrumentation, Process, Civil and Geology.",
-
-  keywords: [
-    "Engineering Categories",
-    "Engineering Knowledge",
-    "Engineering Articles",
-    "Engineering Resources",
-    "Oil and Gas Engineering",
-    "HSE",
-    "Mechanical Engineering",
-    "Electrical Engineering",
-    "Instrumentation Engineering",
-    "Process Engineering",
-    "Civil Engineering",
-    "Geology",
-    "PetroHub",
-  ],
 
   alternates: {
     canonical:
@@ -209,31 +262,11 @@ export const metadata: Metadata = {
 
     follow:
       true,
-
-    googleBot: {
-      index:
-        true,
-
-      follow:
-        true,
-
-      "max-image-preview":
-        "large",
-
-      "max-snippet":
-        -1,
-
-      "max-video-preview":
-        -1,
-    },
   },
 
   openGraph: {
     type:
       "website",
-
-    locale:
-      "en_US",
 
     url:
       "/categories",
@@ -245,7 +278,7 @@ export const metadata: Metadata = {
       "Engineering Categories | PetroHub",
 
     description:
-      "Browse PetroHub knowledge across HSE, Oil & Gas, Mechanical, Electrical, Instrumentation, Process, Civil and Geology.",
+      "Browse engineering articles and technical resources across PetroHub engineering disciplines.",
   },
 
   twitter: {
@@ -256,7 +289,7 @@ export const metadata: Metadata = {
       "Engineering Categories | PetroHub",
 
     description:
-      "Explore engineering knowledge, articles and professional resources by discipline on PetroHub.",
+      "Explore engineering knowledge, articles and technical resources by discipline.",
   },
 };
 
@@ -264,16 +297,37 @@ export const metadata: Metadata = {
    PAGE
 ========================================================= */
 
-export default function CategoriesPage() {
+export default async function CategoriesPage() {
+  const categories =
+    await getCategoryStats();
+
   const siteUrl =
     getSiteUrl();
 
   const categoriesUrl =
     `${siteUrl}/categories`;
 
-  /* =====================================================
-     STRUCTURED DATA
-  ===================================================== */
+  const totalArticles =
+    categories.reduce(
+      (
+        total,
+        category
+      ) =>
+        total +
+        category.articleCount,
+      0
+    );
+
+  const totalResources =
+    categories.reduce(
+      (
+        total,
+        category
+      ) =>
+        total +
+        category.resourceCount,
+      0
+    );
 
   const structuredData = {
     "@context":
@@ -293,25 +347,11 @@ export default function CategoriesPage() {
         name:
           "Engineering Categories",
 
-        headline:
-          "Explore Engineering Categories",
-
         description:
-          "Engineering knowledge across HSE, Oil & Gas, Mechanical, Electrical, Instrumentation, Process, Civil and Geology.",
+          "Engineering articles and technical resources organized by professional discipline.",
 
         inLanguage:
           "en",
-
-        isPartOf: {
-          "@type":
-            "WebSite",
-
-          name:
-            "PetroHub",
-
-          url:
-            siteUrl,
-        },
 
         mainEntity: {
           "@type":
@@ -349,9 +389,6 @@ export default function CategoriesPage() {
         "@type":
           "BreadcrumbList",
 
-        "@id":
-          `${categoriesUrl}#breadcrumb`,
-
         itemListElement: [
           {
             "@type":
@@ -375,7 +412,7 @@ export default function CategoriesPage() {
               2,
 
             name:
-              "Engineering Categories",
+              "Categories",
 
             item:
               categoriesUrl,
@@ -389,10 +426,6 @@ export default function CategoriesPage() {
     <main className="min-h-screen bg-slate-950 text-white">
       <Navbar />
 
-      {/* =================================================
-          STRUCTURED DATA
-      ================================================= */}
-
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -403,16 +436,12 @@ export default function CategoriesPage() {
         }}
       />
 
-      {/* =================================================
-          HERO
-      ================================================= */}
+      {/* HERO */}
 
       <section className="relative overflow-hidden border-b border-slate-800 px-6 py-20">
         <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-transparent to-transparent" />
 
         <div className="relative mx-auto max-w-7xl">
-          {/* BREADCRUMB */}
-
           <div className="mb-7 flex flex-wrap items-center gap-2 text-sm text-slate-500">
             <Link
               href="/"
@@ -421,68 +450,63 @@ export default function CategoriesPage() {
               Home
             </Link>
 
-            <span>/</span>
+            <span>
+              /
+            </span>
 
             <span className="text-slate-300">
               Categories
             </span>
           </div>
 
-          <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
+          <p className="font-semibold uppercase tracking-[0.22em] text-orange-500">
             Engineering Disciplines
           </p>
 
-          <h1 className="mt-4 max-w-4xl text-4xl font-extrabold md:text-5xl">
-            Explore Engineering Categories
+          <h1 className="mt-4 max-w-4xl text-4xl font-black md:text-6xl">
+            Explore Engineering
+            Knowledge by Discipline
           </h1>
 
-          <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-400">
-            Browse PetroHub engineering
-            articles, technical knowledge
-            and professional resources by
-            discipline.
+          <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-400">
+            Browse PetroHub
+            engineering articles,
+            books, manuals,
+            standards and technical
+            resources organized by
+            professional discipline.
           </p>
 
-          {/* ACTIONS */}
-
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/articles"
-              className="rounded-xl bg-orange-500 px-6 py-3.5 font-bold text-white transition hover:bg-orange-600"
-            >
-              Browse Articles →
-            </Link>
+            <StatBadge
+              value={
+                categories.length
+              }
+              label="Disciplines"
+            />
 
-            <Link
-              href="/library"
-              className="rounded-xl border border-slate-700 bg-slate-900 px-6 py-3.5 font-semibold text-slate-300 transition hover:border-orange-500 hover:text-orange-400"
-            >
-              Engineering Library
-            </Link>
+            <StatBadge
+              value={
+                totalArticles
+              }
+              label="Articles"
+            />
 
-            <Link
-              href="/search"
-              className="rounded-xl border border-slate-700 bg-slate-900 px-6 py-3.5 font-semibold text-slate-300 transition hover:border-orange-500 hover:text-orange-400"
-            >
-              Search PetroHub
-            </Link>
-          </div>
-
-          <div className="mt-8">
-            <span className="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-300">
-              {categories.length} Engineering Disciplines
-            </span>
+            <StatBadge
+              value={
+                totalResources
+              }
+              label="Library Resources"
+            />
           </div>
         </div>
       </section>
 
-      {/* =================================================
-          CATEGORIES
-      ================================================= */}
+      {/* CATEGORIES */}
 
       <section className="px-6 py-16">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-9">
+          <div>
             <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
               Knowledge Areas
             </p>
@@ -492,15 +516,15 @@ export default function CategoriesPage() {
             </h2>
 
             <p className="mt-3 max-w-3xl leading-7 text-slate-400">
-              Select an engineering
-              discipline to explore
-              technical articles,
-              professional knowledge and
-              related resources.
+              Select a discipline
+              to explore its
+              published articles
+              and engineering
+              library resources.
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-9 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {categories.map(
               (
                 category
@@ -510,17 +534,20 @@ export default function CategoriesPage() {
                     category.slug
                   }
                   href={`/categories/${category.slug}`}
-                  className="group flex min-h-[270px] flex-col rounded-2xl border border-slate-800 bg-slate-900 p-7 transition hover:-translate-y-1 hover:border-orange-500/50"
+                  className="group flex min-h-[300px] flex-col rounded-2xl border border-slate-800 bg-slate-900 p-7 transition hover:-translate-y-1 hover:border-orange-500/50"
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500/10 text-xl font-extrabold text-orange-400">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500/10 text-xl font-black text-orange-400">
                       {category.name.charAt(
                         0
                       )}
                     </div>
 
-                    <span className="text-xl text-slate-600 transition group-hover:text-orange-400">
-                      →
+                    <span className="rounded-full border border-slate-700 px-3 py-1 text-xs font-bold text-slate-400">
+                      {
+                        category.totalCount
+                      }{" "}
+                      items
                     </span>
                   </div>
 
@@ -536,12 +563,27 @@ export default function CategoriesPage() {
                     }
                   </p>
 
+                  <div className="mt-6 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full bg-slate-950 px-3 py-1.5 text-slate-400">
+                      {
+                        category.articleCount
+                      }{" "}
+                      Articles
+                    </span>
+
+                    <span className="rounded-full bg-slate-950 px-3 py-1.5 text-slate-400">
+                      {
+                        category.resourceCount
+                      }{" "}
+                      Resources
+                    </span>
+                  </div>
+
                   <p className="mt-6 text-sm font-semibold text-orange-400">
                     Explore{" "}
                     {
                       category.name
-                    }{" "}
-                    →
+                    }
                   </p>
                 </Link>
               )
@@ -550,119 +592,92 @@ export default function CategoriesPage() {
         </div>
       </section>
 
-      {/* =================================================
-          PLATFORM LINKS
-      ================================================= */}
+      {/* PLATFORM LINKS */}
 
       <section className="border-t border-slate-800 px-6 py-16">
-        <div className="mx-auto max-w-7xl">
-          <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
-            Continue Exploring
-          </p>
+        <div className="mx-auto grid max-w-7xl gap-5 md:grid-cols-3">
+          <PlatformCard
+            href="/articles"
+            title="Engineering Articles"
+            description="Explore practical technical articles and professional engineering guidance."
+          />
 
-          <h2 className="mt-3 text-3xl font-bold">
-            More PetroHub Knowledge
-          </h2>
+          <PlatformCard
+            href="/library"
+            title="Engineering Library"
+            description="Browse books, manuals, standards, notes and downloadable engineering resources."
+          />
 
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
-            <Link
-              href="/articles"
-              className="group rounded-2xl border border-slate-800 bg-slate-900 p-7 transition hover:border-orange-500/50"
-            >
-              <h3 className="text-xl font-bold transition group-hover:text-orange-400">
-                Engineering Articles
-              </h3>
-
-              <p className="mt-3 leading-7 text-slate-400">
-                Read practical technical
-                articles and professional
-                engineering guidance.
-              </p>
-
-              <p className="mt-5 font-semibold text-orange-400">
-                Browse Articles →
-              </p>
-            </Link>
-
-            <Link
-              href="/library"
-              className="group rounded-2xl border border-slate-800 bg-slate-900 p-7 transition hover:border-orange-500/50"
-            >
-              <h3 className="text-xl font-bold transition group-hover:text-orange-400">
-                Engineering Library
-              </h3>
-
-              <p className="mt-3 leading-7 text-slate-400">
-                Explore books, manuals,
-                technical notes and
-                engineering resources.
-              </p>
-
-              <p className="mt-5 font-semibold text-orange-400">
-                Browse Library →
-              </p>
-            </Link>
-
-            <Link
-              href="/search"
-              className="group rounded-2xl border border-slate-800 bg-slate-900 p-7 transition hover:border-orange-500/50"
-            >
-              <h3 className="text-xl font-bold transition group-hover:text-orange-400">
-                Search PetroHub
-              </h3>
-
-              <p className="mt-3 leading-7 text-slate-400">
-                Search articles,
-                engineering resources
-                and technical content
-                from one place.
-              </p>
-
-              <p className="mt-5 font-semibold text-orange-400">
-                Start Searching →
-              </p>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* =================================================
-          SEARCH CTA
-      ================================================= */}
-
-      <section className="border-t border-slate-800 px-6 py-16">
-        <div className="mx-auto max-w-7xl">
-          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 md:p-10">
-            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="font-semibold uppercase tracking-[0.2em] text-orange-500">
-                  Find Knowledge
-                </p>
-
-                <h2 className="mt-3 text-3xl font-bold">
-                  Looking for something specific?
-                </h2>
-
-                <p className="mt-3 max-w-2xl leading-7 text-slate-400">
-                  Search PetroHub articles,
-                  books, manuals, standards
-                  and technical resources
-                  from one place.
-                </p>
-              </div>
-
-              <Link
-                href="/search"
-                className="shrink-0 rounded-xl bg-orange-500 px-7 py-3.5 text-center font-bold text-white transition hover:bg-orange-600"
-              >
-                Search PetroHub →
-              </Link>
-            </div>
-          </div>
+          <PlatformCard
+            href="/formulas"
+            title="Formulas & Calculators"
+            description="Use PetroHub engineering formulas and interactive technical calculators."
+          />
         </div>
       </section>
 
       <Footer />
     </main>
+  );
+}
+
+/* =========================================================
+   STAT BADGE
+========================================================= */
+
+function StatBadge({
+  value,
+  label,
+}: {
+  value: number;
+  label: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-900/80 px-5 py-3">
+      <span className="font-black">
+        {
+          value.toLocaleString()
+        }
+      </span>
+
+      <span className="ml-2 text-sm text-slate-400">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+/* =========================================================
+   PLATFORM CARD
+========================================================= */
+
+function PlatformCard({
+  href,
+  title,
+  description,
+}: {
+  href: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link
+      href={
+        href
+      }
+      className="group rounded-2xl border border-slate-800 bg-slate-900 p-7 transition hover:border-orange-500/50"
+    >
+      <h3 className="text-xl font-bold transition group-hover:text-orange-400">
+        {title}
+      </h3>
+
+      <p className="mt-3 leading-7 text-slate-400">
+        {description}
+      </p>
+
+      <p className="mt-5 font-semibold text-orange-400">
+        Explore
+      </p>
+    </Link>
   );
 }
